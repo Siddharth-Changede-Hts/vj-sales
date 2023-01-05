@@ -286,4 +286,5 @@ function sendSMs_twilio_services(message, number) {
     }
   })
 }
-exports.sendSMs_A2P_services = sendSMs_A2P_services 
+module.exports.sendSMs_A2P_services = sendSMs_A2P_services
+module.exports.sendSMs_twilio_services = sendSMs_twilio_services 

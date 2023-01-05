@@ -1,7 +1,7 @@
 var express = require('express');
 var router = express.Router();
 var Razorpay = require('razorpay');
-const { sendSMs_A2P_services } = require('./message');
+const { sendSMs_A2P_services, sendSMs_twilio_services } = require('./message');
 var instance = new Razorpay({
     key_id: 'rzp_test_hh7wD7GVmRaEaX',
     key_secret: 'us2o34YBjUEqkF2UqQZXwNap',
@@ -37,7 +37,16 @@ router.post('/create-virtual-acc', function (req, res, next) {
                         razorpayCustomerId: customerRes.id,
                         virtualAccDetails: { bankAccountNumber: accRes.receivers[0].account_number, bankIFSCCode: accRes.receivers[0].ifsc, bankUpiId: accRes.receivers[1].address, bankBeneficiaryName: accRes.receivers[0].name }
                     }).eq('personId', req.body.personId).then((personRes) => {
-                        res.send({ success: true, message: "Virtual Account created successfully" })
+                        // CHANGE CONDITION 
+                        if (req.body.contactNumber.toString().substr(0, 3) !== '+91') {
+                            sendSMs_A2P_services("Hello", req.body.contactNumber)
+                        } else {
+                            sendSMs_twilio_services(`Account Number : ${accRes.receivers[0].account_number} \n IFSC Code : ${accRes.receivers[0].ifsc} \n Beneficiary Name : ${accRes.receivers[0].name} \n UPI Id : ${accRes.receivers[1].address}`, req.body.contactNumber).then((resp) => {
+                                res.send({ success: true, message: "Virtual Account created successfully" })
+                            }).catch((err) => {
+                                res.send({ success: false, err })
+                            })
+                        }
                     })
             })
         }).catch((customerErr) => {
@@ -49,11 +58,8 @@ router.post('/create-virtual-acc', function (req, res, next) {
 })
 
 router.post('/webhook', function (req, res, next) {
-    console.log(req.body)
     if (req.body.event === 'virtual_account.created') {
         res.send("success")
-        sendSMs_A2P_services("Hello",'+919420102285')
-        console.log(`virtual acc created for ${req.body.payload.virtual_account.customer_id}`)
     } else {
         res.send("success")
         console.log(`${req.body.payload.payment.entity.amount} received for ${req.body.payload.virtual_account.entity.customer_id}`)
