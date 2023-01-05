@@ -1,6 +1,7 @@
 var express = require('express');
 var router = express.Router();
-var Razorpay = require('razorpay')
+var Razorpay = require('razorpay');
+const { sendSMs_A2P_services } = require('./message');
 var instance = new Razorpay({
     key_id: 'rzp_test_hh7wD7GVmRaEaX',
     key_secret: 'us2o34YBjUEqkF2UqQZXwNap',
@@ -51,6 +52,7 @@ router.post('/webhook', function (req, res, next) {
     console.log(req.body)
     if (req.body.event === 'virtual_account.created') {
         res.send("success")
+        sendSMs_A2P_services("Hello",919420102285)
         console.log(`virtual acc created for ${req.body.payload.virtual_account.customer_id}`)
     } else {
         res.send("success")

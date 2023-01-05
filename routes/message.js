@@ -197,7 +197,7 @@ function sendSMs_OTP_twilio_services(otp, number) {
 
 
 //* For Message
-function sendSMs_A2P_services(message, number) {
+export function sendSMs_A2P_services(message, number) {
   return new Promise((resolve, reject) => {
     axios.get(`http://a2pservices.in/api/mt/SendSMS?user=vilas&password=123456789&senderid=VJDLLP&channel=Trans&DCS=0&flashsms=0&number=${number}&text=${message}&route=20`).then(response => {
       if (response.data.ErrorMessage === "Done" &&  response.data.ErrorCode === "000") {
@@ -237,7 +237,7 @@ function sendSMs_A2P_services(message, number) {
   })
 }
 
-function sendSMs_twilio_services(message, number) {
+export function sendSMs_twilio_services(message, number) {
   return new Promise(async (resolve, reject) => {
     try {
       const body = {
