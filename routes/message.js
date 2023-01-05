@@ -32,8 +32,8 @@ const transporter = nodemailer.createTransport({
     type: 'OAuth2',
     user: mailerConfig.contactUsAt,
     clientId: '585541018232-gjs7r4fjvtv6rd6i9c031ad98vcmmsdi.apps.googleusercontent.com',
-    clientSecret:'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',
-    refreshToken:'1//04cUVdkzpGAvGCgYIARAAGAQSNwF-L9Ir0ELHQzaReWzGQ5oMZoIYoDFBYo1gzj2obzoLx-X1i5-FIJX864UAG3wJUCVhnsMVp4g',
+    clientSecret: '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',
+    refreshToken: '1//04cUVdkzpGAvGCgYIARAAGAQSNwF-L9Ir0ELHQzaReWzGQ5oMZoIYoDFBYo1gzj2obzoLx-X1i5-FIJX864UAG3wJUCVhnsMVp4g',
     accessToken: accessToken,
     tls: {
       rejectUnauthorized: false
@@ -45,33 +45,33 @@ const transporter = nodemailer.createTransport({
 
 router.post("/sendOTPMessage", async function (req, res, next) {
 
-  const {number, is_international_number} = req.body;
+  const { number, is_international_number } = req.body;
 
   var otp = Math.floor(1000 + Math.random() * 9000);
 
   if (is_international_number) {
     const sendSMs_twilio_servicesResponse = await sendSMs_OTP_twilio_services(otp, number);
-    
+
     res.send(sendSMs_twilio_servicesResponse);
   } else {
     const sendSMs_A2P_servicesResponse = await sendSMs_OTP_A2P_services(otp, number);
-    
+
     res.send(sendSMs_A2P_servicesResponse);
   }
 });
 
 router.post("/sendMessage", async function (req, res, next) {
 
-  const {number, is_international_number, message} = req.body;
+  const { number, is_international_number, message } = req.body;
 
 
   if (is_international_number) {
     const sendSMs_twilio_servicesResponse = await sendSMs_twilio_services(message, number);
-    
+
     res.send(sendSMs_twilio_servicesResponse);
   } else {
     const sendSMs_A2P_servicesResponse = await sendSMs_A2P_services(message, number);
-    
+
     res.send(sendSMs_A2P_servicesResponse);
   }
 });
@@ -108,7 +108,7 @@ function sendMail(errorMessage) {
 function sendSMs_OTP_A2P_services(otp, number) {
   return new Promise((resolve, reject) => {
     axios.get(`http://a2pservices.in/api/mt/SendSMS?user=vilas&password=123456789&senderid=VJDLLP&channel=Trans&DCS=0&flashsms=0&number=${number}&text=Dear Sir / Madam this code - ${otp} is a VJ system code to verify your enquiry. Please share it with your Channel Partner or Sales Manager from VJ Team . Regards,Team Vilas Javdekar Developers&route=20`).then(response => {
-      if (response.data.ErrorMessage === "Done" &&  response.data.ErrorCode === "000") {
+      if (response.data.ErrorMessage === "Done" && response.data.ErrorCode === "000") {
         resolve({ success: true, data: response.data, otp });
       } else {
         console.log(`response.data.ErrorCode ${number} -> `, response.data.ErrorCode);
@@ -116,9 +116,9 @@ function sendSMs_OTP_A2P_services(otp, number) {
           let msg = "Your's A2PSERVICES ";
           if (response.data.ErrorCode === "008" || response.data.ErrorCode === "8") {
             msg = msg + "account not active.";
-          } else if(response.data.ErrorCode === "021" || response.data.ErrorCode === "21") {
+          } else if (response.data.ErrorCode === "021" || response.data.ErrorCode === "21") {
             msg = msg + "account insufficient credits.";
-          } else if(response.data.ErrorCode === "009" || response.data.ErrorCode === "9"){
+          } else if (response.data.ErrorCode === "009" || response.data.ErrorCode === "9") {
             msg = msg + "account locked, contact your account manager.";
           } else {
             msg = msg + response?.data?.ErrorMessage;
@@ -149,17 +149,17 @@ function sendSMs_OTP_twilio_services(otp, number) {
   return new Promise(async (resolve, reject) => {
     try {
       const body = {
-        from :SMSConfig.TWILIO_FROM_NUMBER,
-        body :`Dear Sir / Madam this code - ${otp} is a VJ system code to verify your enquiry. Please share it with your Channel Partner or Sales Manager from VJ Team . Regards,Team Vilas Javdekar Developers`,
+        from: SMSConfig.TWILIO_FROM_NUMBER,
+        body: `Dear Sir / Madam this code - ${otp} is a VJ system code to verify your enquiry. Please share it with your Channel Partner or Sales Manager from VJ Team . Regards,Team Vilas Javdekar Developers`,
         // body :`Test`,
-        to : number
+        to: number
       }
 
       const twilioClientResponse = await twilioClient.messages.create(body);
 
       // console.log("Twilio response => ", twilioClientResponse);
       resolve({ success: true, data: twilioClientResponse, otp });
-          
+
     } catch (error) {
       console.log("Twilio error => ", error);
 
@@ -167,11 +167,11 @@ function sendSMs_OTP_twilio_services(otp, number) {
         let msg = "Your's Twilio ";
         if (error.code === 1001) {
           msg = msg + "account not active.";
-        } else if(error.code === 1002) {
+        } else if (error.code === 1002) {
           msg = msg + "Trial accounts do not support the feature you tried to use.";
-        } else if(error.code === 1003){
+        } else if (error.code === 1003) {
           msg = msg + "account Incoming call rejected due to inactive account.";
-        } else if(error.code === 1004){
+        } else if (error.code === 1004) {
           msg = msg + "account Call concurrency limit exceeded.";
         } else {
           msg = msg + response?.data?.ErrorMessage;
@@ -197,10 +197,10 @@ function sendSMs_OTP_twilio_services(otp, number) {
 
 
 //* For Message
-export function sendSMs_A2P_services(message, number) {
+function sendSMs_A2P_services(message, number) {
   return new Promise((resolve, reject) => {
     axios.get(`http://a2pservices.in/api/mt/SendSMS?user=vilas&password=123456789&senderid=VJDLLP&channel=Trans&DCS=0&flashsms=0&number=${number}&text=${message}&route=20`).then(response => {
-      if (response.data.ErrorMessage === "Done" &&  response.data.ErrorCode === "000") {
+      if (response.data.ErrorMessage === "Done" && response.data.ErrorCode === "000") {
         resolve({ success: true, data: response.data });
       } else {
         console.log(`response.data.ErrorCode ${number} -> `, response.data.ErrorCode);
@@ -208,9 +208,9 @@ export function sendSMs_A2P_services(message, number) {
           let msg = "Your's A2PSERVICES ";
           if (response.data.ErrorCode === "008" || response.data.ErrorCode === "8") {
             msg = msg + "account not active.";
-          } else if(response.data.ErrorCode === "021" || response.data.ErrorCode === "21") {
+          } else if (response.data.ErrorCode === "021" || response.data.ErrorCode === "21") {
             msg = msg + "account insufficient credits.";
-          } else if(response.data.ErrorCode === "009" || response.data.ErrorCode === "9"){
+          } else if (response.data.ErrorCode === "009" || response.data.ErrorCode === "9") {
             msg = msg + "account locked, contact your account manager.";
           } else {
             msg = msg + response?.data?.ErrorMessage;
@@ -237,21 +237,21 @@ export function sendSMs_A2P_services(message, number) {
   })
 }
 
-export function sendSMs_twilio_services(message, number) {
+function sendSMs_twilio_services(message, number) {
   return new Promise(async (resolve, reject) => {
     try {
       const body = {
-        from :SMSConfig.TWILIO_FROM_NUMBER,
-        body :message,
+        from: SMSConfig.TWILIO_FROM_NUMBER,
+        body: message,
         // body :`Test`,
-        to : number
+        to: number
       }
 
       const twilioClientResponse = await twilioClient.messages.create(body);
 
       // console.log("Twilio response => ", twilioClientResponse);
       resolve({ success: true, data: twilioClientResponse });
-          
+
     } catch (error) {
       console.log("Twilio error => ", error);
 
@@ -259,11 +259,11 @@ export function sendSMs_twilio_services(message, number) {
         let msg = "Your's Twilio ";
         if (error.code === 1001) {
           msg = msg + "account not active.";
-        } else if(error.code === 1002) {
+        } else if (error.code === 1002) {
           msg = msg + "Trial accounts do not support the feature you tried to use.";
-        } else if(error.code === 1003){
+        } else if (error.code === 1003) {
           msg = msg + "account Incoming call rejected due to inactive account.";
-        } else if(error.code === 1004){
+        } else if (error.code === 1004) {
           msg = msg + "account Call concurrency limit exceeded.";
         } else {
           msg = msg + response?.data?.ErrorMessage;
@@ -286,3 +286,4 @@ export function sendSMs_twilio_services(message, number) {
     }
   })
 }
+exports.sendSMs_A2P_services = sendSMs_A2P_services 
