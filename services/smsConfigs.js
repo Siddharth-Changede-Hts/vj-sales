@@ -1,0 +1,6 @@
+const config = {
+  TWILIO_ACCOUNT_SID: "AC3900352c18df0b274177df76560abf22",
+  TWILIO_AUTH_TOKEN: "042904f20e2cee933ab15da240ceeb7c",
+  TWILIO_FROM_NUMBER: "+1 561 823 2622"
+};
+exports.app = config;
