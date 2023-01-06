@@ -108,4 +108,12 @@ router.post('/create-payment-link', function (req, res, next) {
     })
 })
 
+router.post('/resend-payment-link', function (req, res, nex) {
+    instance.paymentLink.notifyBy(req.body.paymentId, 'sms').then((resp) => {
+        res.send({ success: true, message: "payment link send successfully" })
+    }).catch((err) => {
+        res.send({ success: false, err })
+    })
+})
+
 module.exports = router;
