@@ -58,12 +58,42 @@ router.post('/create-virtual-acc', function (req, res, next) {
 })
 
 router.post('/webhook', function (req, res, next) {
-    if (req.body.event === 'virtual_account.created') {
+    if (req.body.event === 'payment_link.paid') {
+        console.log(req.body)
         res.send("success")
     } else {
         res.send("success")
         console.log(`${req.body.payload.payment.entity.amount} received for ${req.body.payload.virtual_account.entity.customer_id}`)
     }
+})
+
+router.post('/create-payment-link', function (req, res, next) {
+    instance.paymentLink.create({
+        amount: 500,
+        currency: "INR",
+        accept_partial: false,
+        // first_min_partial_amount: 100,
+        description: "For XYZ purpose",
+        customer: {
+            name: "Gaurav Kumar",
+            email: "gaurav.kumar@example.com",
+            contact: "+919420102285"
+        },
+        notify: {
+            sms: true,
+            email: true
+        },
+        reminder_enable: true,
+        notes: {
+            policy_name: "Jeevan Bima"
+        },
+        callback_url: "https://example-callback-url.com/",
+        callback_method: "get"
+    }).then((resp) => {
+        res.send(resp)
+    }).catch((err) => {
+        res.send(err)
+    })
 })
 
 module.exports = router;
