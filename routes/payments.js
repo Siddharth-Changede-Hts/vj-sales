@@ -79,35 +79,33 @@ router.post('/webhook', function (req, res, next) {
 })
 
 router.post('/create-payment-link', function (req, res, next) {
-    console.log(req.body)
-    res.send(req.body)
-    // instance.paymentLink.create({
-    //     // upi_link: true, NOT IN TEST MODE
-    //     amount: req.body.amount * 100,
-    //     currency: "INR",
-    //     accept_partial: false,
-    //     expire_by: new Date().getTime() + 86400000,
-    //     // first_min_partial_amount: 100,
-    //     description: `${req.body.tokenName} token payment link for ${req.body.eventName} event for ${req.body.leadName} lead`,
-    //     customer: {
-    //         name: `${req.body.leadName}`,
-    //         email: `${req.body.leadEmail}`,
-    //         contact: `${req.body.leadContactNumber}`
-    //     },
-    //     notify: {
-    //         sms: true,
-    //         email: true
-    //     },
-    //     reminder_enable: true,
-    //     // callback_url: "https://example-callback-url.com/",
-    //     // callback_method: "get"
-    // }).then((resp) => {
-    //     supabase.from('TokenTransactions').insert({ paymentLinkId: resp.id, status: "pending", amount: resp.amount / 100, leadId: req.body.leadId, eventTokenId: req.body.eventTokenId }).then((supabaseRes) => {
-    //         res.send({ success: true, message: "Payment link shared successfully" })
-    //     })
-    // }).catch((err) => {
-    //     res.send({ success: false, err })
-    // })
+    instance.paymentLink.create({
+        // upi_link: true, NOT IN TEST MODE
+        amount: req.body.amount * 100,
+        currency: "INR",
+        accept_partial: false,
+        expire_by: new Date().getTime() + 86400000,
+        // first_min_partial_amount: 100,
+        description: `${req.body.tokenName} token payment link for ${req.body.eventName} event for ${req.body.leadName} lead`,
+        customer: {
+            name: `${req.body.leadName}`,
+            email: `${req.body.leadEmail}`,
+            contact: `${req.body.leadContactNumber}`
+        },
+        notify: {
+            sms: true,
+            email: true
+        },
+        reminder_enable: true,
+        // callback_url: "https://example-callback-url.com/",
+        // callback_method: "get"
+    }).then((resp) => {
+        supabase.from('TokenTransactions').insert({ paymentLinkId: resp.id, status: "pending", amount: resp.amount / 100, leadId: req.body.leadId, eventTokenId: req.body.eventTokenId }).then((supabaseRes) => {
+            res.send({ success: true, message: "Payment link shared successfully" })
+        })
+    }).catch((err) => {
+        res.send({ success: false, err })
+    })
 })
 
 router.post('/resend-payment-link', function (req, res, nex) {
