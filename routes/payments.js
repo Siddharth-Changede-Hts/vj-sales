@@ -59,8 +59,8 @@ router.post('/create-virtual-acc', function (req, res, next) {
 
 router.post('/webhook', function (req, res, next) {
     if (req.body.event === 'payment_link.paid') {
-        // console.log(req.body)
-        supabase.from('TokenTransactions').update({ status: "complete" }).eq('paymentLinkId', req.body.payment_link.entity.id).then((resp) => {
+        console.log(req.body)
+        supabase.from('TokenTransactions').update({ status: "complete" }).eq('paymentLinkId', req.body.payload.payment_link.entity.id).then((resp) => {
             res.send(resp)
             console.log(resp)
         })
