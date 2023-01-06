@@ -72,6 +72,17 @@ router.post('/webhook', function (req, res, next) {
                 })
             })
         })
+    } else if (req.body.event === 'payment_link.expired') {
+        supabase.from('TokenTransactions').select('*,eventTokenId(*)').eq('paymentLinkId', req.body.payload.payment_link.entity.id).then((tokenTransaction) => {
+            supabase.from('LeadStatus').update({ status: "Site Visit Done" }).eq('leadId', tokenTransaction.data[0].leadId).then((leadStatus) => {
+                supabase.from('EventTokenLeadRelations').delete().eq('paymentId', tokenTransaction.data[0].paymentId).then((relation) => {
+                    supabase.from('TokenTransactions').update({ status: "expired" }).eq('paymentLinkId', req.body.payload.payment_link.entity.id).then((resp) => {
+                        res.send("success")
+                        console.log("success")
+                    })
+                })
+            })
+        })
     } else {
         res.send("success")
         console.log(`${req.body.payload.payment.entity.amount} received for ${req.body.payload.virtual_account.entity.customer_id}`)
@@ -84,7 +95,8 @@ router.post('/create-payment-link', function (req, res, next) {
         amount: req.body.amount * 100,
         currency: "INR",
         accept_partial: false,
-        expire_by: new Date().getTime() + 86400000,
+        // expire_by: new Date().getTime() + 86400000,
+        expire_by: 1673012966723,
         // first_min_partial_amount: 100,
         description: `${req.body.tokenName} token payment link for ${req.body.eventName} event for ${req.body.leadName} lead`,
         customer: {
