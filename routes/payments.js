@@ -60,9 +60,17 @@ router.post('/create-virtual-acc', function (req, res, next) {
 router.post('/webhook', function (req, res, next) {
     if (req.body.event === 'payment_link.paid') {
         console.log(req.body)
-        supabase.from('TokenTransactions').update({ status: "complete" }).eq('paymentLinkId', req.body.payload.payment_link.entity.id).then((resp) => {
-            res.send(resp)
-            console.log(resp)
+        supabase.from('TokenTransactions').select('*,eventTokenId(*)').eq('paymentLinkId', req.body.payload.payment_link.entity.id).then((tokenTransaction) => {
+            supabase.from('LeadStatus').update({ status: "Token Payment Complete" }).eq('leadId', tokenTransaction.data[0].leadId).then((leadStatus) => {
+                supabase.rpc('getmaxsrno', { pid: tokenTransaction.data[0].eventTokenId.eventId }).then((rpcRes) => {
+                    supabase.from('EventTokenLeadRelations').update({ srno: rpcRes.data[0].num === null ? 1 : parseInt(rpcRes.data[0].num) + 1, paidAmount: req.body.payload.payment_link.entity.amount_paid }).eq('eventTokenId', tokenTransaction.data[0].eventTokenId.eventTokenId).eq('leadId', tokenTransaction.data[0].leadId).then((leadStatus) => {
+                        supabase.from('TokenTransactions').update({ status: "complete" }).eq('paymentLinkId', req.body.payload.payment_link.entity.id).then((resp) => {
+                            res.send(resp)
+                            console.log(resp)
+                        })
+                    })
+                })
+            })
         })
     } else {
         res.send("success")
