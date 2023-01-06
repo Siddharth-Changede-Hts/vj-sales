@@ -100,7 +100,7 @@ router.post('/create-payment-link', function (req, res, next) {
         // callback_url: "https://example-callback-url.com/",
         // callback_method: "get"
     }).then((resp) => {
-        supabase.from('TokenTransactions').insert({ paymentLinkId: resp.id, status: "pending", amount: resp.amount / 100, leadId: req.body.leadId, eventTokenId: req.body.eventTokenId }).then((supabaseRes) => {
+        supabase.from('TokenTransactions').insert({ paymentLinkId: resp.id, paymentId: req.body.paymentId, status: "pending", amount: resp.amount / 100, leadId: req.body.leadId, eventTokenId: req.body.eventTokenId }).then((supabaseRes) => {
             res.send({ success: true, message: "Payment link shared successfully" })
         })
     }).catch((err) => {
