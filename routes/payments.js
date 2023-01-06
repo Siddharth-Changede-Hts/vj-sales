@@ -59,8 +59,11 @@ router.post('/create-virtual-acc', function (req, res, next) {
 
 router.post('/webhook', function (req, res, next) {
     if (req.body.event === 'payment_link.paid') {
-        console.log(req.body)
-        res.send("success")
+        // console.log(req.body)
+        supabase.from('TokenTransactions').update({ status: "complete" }).eq('paymentLinkId', req.body.payment_link.entity.id).then((resp) => {
+            res.send(resp)
+            console.log(resp)
+        })
     } else {
         res.send("success")
         console.log(`${req.body.payload.payment.entity.amount} received for ${req.body.payload.virtual_account.entity.customer_id}`)
@@ -69,30 +72,30 @@ router.post('/webhook', function (req, res, next) {
 
 router.post('/create-payment-link', function (req, res, next) {
     instance.paymentLink.create({
-        amount: 500,
+        // upi_link: true, NOT IN TEST MODE
+        amount: req.body.amount * 100,
         currency: "INR",
         accept_partial: false,
         // first_min_partial_amount: 100,
-        description: "For XYZ purpose",
+        description: `${req.body.tokenName} token payment link for ${req.body.eventName} event for ${req.body.leadName} lead`,
         customer: {
-            name: "Gaurav Kumar",
-            email: "gaurav.kumar@example.com",
-            contact: "+919420102285"
+            name: `${req.body.leadName}`,
+            email: `${req.body.leadEmail}`,
+            contact: `${req.body.leadContactNumber}`
         },
         notify: {
             sms: true,
             email: true
         },
         reminder_enable: true,
-        notes: {
-            policy_name: "Jeevan Bima"
-        },
-        callback_url: "https://example-callback-url.com/",
-        callback_method: "get"
+        // callback_url: "https://example-callback-url.com/",
+        // callback_method: "get"
     }).then((resp) => {
-        res.send(resp)
+        supabase.from('TokenTransactions').insert({ paymentLinkId: resp.id, status: "pending", amount: resp.amount / 100, leadId: req.body.leadId, eventTokenId: req.body.eventTokenId }).then((supabaseRes) => {
+            res.send({ success: true, message: "Payment link shared successfully" })
+        })
     }).catch((err) => {
-        res.send(err)
+        res.send({ success: false, err })
     })
 })
 
