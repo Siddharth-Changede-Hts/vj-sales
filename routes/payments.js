@@ -181,9 +181,9 @@ router.post('/create-pos-transaction', function (req, res, next) {
                 AutoCancelDurationInMinutes: 5
             }).then((resp) => {
                 if (resp.data.PlutusTransactionReferenceID === 0) {
-                    res.send({ success: true, message: "Please complete previous transaction to continue" })
+                    res.send({ success: false, message: "Please complete previous transaction to continue" })
                 } else if (resp.data.PlutusTransactionReferenceID < 0) {
-                    res.send({ success: true, message: "Please provide new transaction number" })
+                    res.send({ success: false, message: "Please provide new transaction number" })
                 } else {
                     res.send({ success: true, message: "Transaction created successfully", ptrnNo: resp.data.PlutusTransactionReferenceID })
                 }
