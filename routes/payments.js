@@ -106,7 +106,7 @@ router.post('/webhook', function (req, res, next) {
                                 supabase.from('AllotmentTransactions').insert({ leadId: payments.data[0].leadId, unitId: payments.data[0].unitId, allotmentPaymentId: payments.data[0].allotmentPaymentId, amount: parseFloat(amount), transactionType: 'Allotment', modeOfPayment: 'Virtual acc' }).then((re) => {
                                     supabase.from('LeadStatus').update({ status: 'Allotment Payment Complete' }).eq('leadId', payments.data[0].leadId).then((r) => {
                                         console.log("success")
-                                        res.send("success")
+                                        // res.send("success")
                                     })
                                 })
                             })
