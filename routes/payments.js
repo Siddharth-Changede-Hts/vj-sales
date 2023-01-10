@@ -64,7 +64,7 @@ router.post('/webhook', function (req, res, next) {
         supabase.from('TokenTransactions').select('*,eventTokenId(*)').eq('paymentLinkId', req.body.payload.payment_link.entity.id).then((tokenTransaction) => {
             supabase.from('LeadStatus').update({ status: "Token Payment Complete" }).eq('leadId', tokenTransaction.data[0].leadId).then((leadStatus) => {
                 supabase.rpc('getmaxsrno', { pid: tokenTransaction.data[0].eventTokenId.eventId }).then((rpcRes) => {
-                    supabase.from('EventTokenLeadRelations').update({ srno: rpcRes.data[0].num === null ? 1 : parseInt(rpcRes.data[0].num) + 1, srno: rpcRes.data[0].num === null ? 1 : parseInt(rpcRes.data[0].num) + 1, paidAmount: req.body.payload.payment_link.entity.amount_paid / 100 }).eq('eventTokenId', tokenTransaction.data[0].eventTokenId.eventTokenId).eq('leadId', tokenTransaction.data[0].leadId).then((leadStatus) => {
+                    supabase.from('EventTokenLeadRelations').update({ srno: rpcRes.data[0].num === null ? 1 : parseInt(rpcRes.data[0].num) + 1, bandNumber: rpcRes.data[0].num === null ? 1 : parseInt(rpcRes.data[0].num) + 1, paidAmount: req.body.payload.payment_link.entity.amount_paid / 100 }).eq('eventTokenId', tokenTransaction.data[0].eventTokenId.eventTokenId).eq('leadId', tokenTransaction.data[0].leadId).then((leadStatus) => {
                         supabase.from('TokenTransactions').update({ status: "complete", eventDateTime: new Date().getTime() }).eq('paymentLinkId', req.body.payload.payment_link.entity.id).then((resp) => {
                             res.send(resp)
                             console.log(resp)
@@ -182,7 +182,7 @@ router.post('/create-pos-transaction', function (req, res, next) {
             }).then((resp) => {
                 if (resp.data.PlutusTransactionReferenceID === 0) {
                     res.send({ success: true, message: "Please complete previous transaction to continue" })
-                } else if (resp.data.PlutusTransactionReferenceID === -1) {
+                } else if (resp.data.PlutusTransactionReferenceID < 0) {
                     res.send({ success: true, message: "Please provide new transaction number" })
                 } else {
                     res.send({ success: true, message: "Transaction created successfully", ptrnNo: resp.data.PlutusTransactionReferenceID })
