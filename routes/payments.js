@@ -87,7 +87,34 @@ router.post('/webhook', function (req, res, next) {
     } else if (req.body.event === 'virtual_account.credited') {
         supabase.from('Leads').select('*').eq('razorpayCustomerId', req.body.payload.virtual_account.entity.customer_id).then((lead) => {
             supabase.rpc('getallotmentpayments', { pid: lead.data[0].leadId }).then((payments) => {
-                console.log(payments)
+                for (let i = 0; i < payments.data.length; i++) {
+                    let amount = req.body.payload.payment.entity.amount
+                    if (amount > 0) {
+                        if ((payments.data[i].totalCost - payments.data[i].paidAmount) >= req.body.payload.payment.entity.amount) {
+                            supabase.from('AllotmentPayment').update('paidAmount', payments.data[0].paidAmount + req.body.payload.payment.entity.amount).eq('allotmentPaymentId', payments.data[0].allotmentPaymentId).then((resp) => {
+                                supabase.from('AllotmentTransactions').insert({ leadId: payments.data[0].leadId, unitId: payments.data[0].unitId, allotmentPaymentId: payments.data[0].allotmentPaymentId, amount: req.body.payload.payment.entity.amount, transactionType: 'Allotment', modeOfPayment: 'Virtual acc' }).then((re) => {
+                                    supabase.from('LeadStatus').update('status', ((payments.data[i].totalCost - payments.data[i].paidAmount) > req.body.payload.payment.entity.amount) ? 'Allotment Partial Payment Done' : 'Allotment Payment Complete').then((res) => {
+                                        amount = 0
+                                        console.log("success")
+                                        res.send("success")
+                                    })
+                                })
+                            })
+                        } else {
+                            amount = amount - (payments.data[i].totalCost - payments.data[i].paidAmount)
+                            supabase.from('AllotmentPayment').update('paidAmount', payments.data[0].paidAmount + (payments.data[i].totalCost - payments.data[i].paidAmount)).eq('allotmentPaymentId', payments.data[0].allotmentPaymentId).then((resp) => {
+                                supabase.from('AllotmentTransactions').insert({ leadId: payments.data[0].leadId, unitId: payments.data[0].unitId, allotmentPaymentId: payments.data[0].allotmentPaymentId, amount: req.body.payload.payment.entity.amount, transactionType: 'Allotment', modeOfPayment: 'Virtual acc' }).then((re) => {
+                                    supabase.from('LeadStatus').update('status', 'Allotment Payment Complete').then((res) => {
+                                        console.log("success")
+                                        res.send("success")
+                                    })
+                                })
+                            })
+                        }
+                    } else {
+                        break;
+                    }
+                }
             })
         })
         res.send("success")
