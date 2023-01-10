@@ -1,3 +1,4 @@
+const axios = require("axios").default;
 var express = require('express');
 var router = express.Router();
 var Razorpay = require('razorpay');
@@ -15,8 +16,8 @@ router.post('/create-virtual-acc', function (req, res, next) {
         res.send({ success: false, message: "Please provide lead contact number" })
     } else if (!req.body.email || req.body.email === '') {
         res.send({ success: false, message: "Please provide lead email" })
-    } else if (!req.body.personId || req.body.personId === '') {
-        res.send({ success: false, message: "Please provide lead person id" })
+    } else if (!req.body.leadId || req.body.leadId === '') {
+        res.send({ success: false, message: "Please provide lead lead id" })
     } else {
         instance.customers.create({
             name: req.body.name,
@@ -32,11 +33,11 @@ router.post('/create-virtual-acc', function (req, res, next) {
                 },
                 customer_id: customerRes.id,
             }).then((accRes) => {
-                supabase.from('Person').update(
+                supabase.from('Leads').update(
                     {
                         razorpayCustomerId: customerRes.id,
                         virtualAccDetails: { bankAccountNumber: accRes.receivers[0].account_number, bankIFSCCode: accRes.receivers[0].ifsc, bankUpiId: accRes.receivers[1].address, bankBeneficiaryName: accRes.receivers[0].name }
-                    }).eq('personId', req.body.personId).then((personRes) => {
+                    }).eq('leadId', req.body.leadId).then((personRes) => {
                         // CHANGE CONDITION 
                         if (req.body.contactNumber.toString().substr(0, 3) !== '+91') {
                             sendSMs_A2P_services("Hello", req.body.contactNumber)
@@ -63,8 +64,8 @@ router.post('/webhook', function (req, res, next) {
         supabase.from('TokenTransactions').select('*,eventTokenId(*)').eq('paymentLinkId', req.body.payload.payment_link.entity.id).then((tokenTransaction) => {
             supabase.from('LeadStatus').update({ status: "Token Payment Complete" }).eq('leadId', tokenTransaction.data[0].leadId).then((leadStatus) => {
                 supabase.rpc('getmaxsrno', { pid: tokenTransaction.data[0].eventTokenId.eventId }).then((rpcRes) => {
-                    supabase.from('EventTokenLeadRelations').update({ srno: rpcRes.data[0].num === null ? 1 : parseInt(rpcRes.data[0].num) + 1, paidAmount: req.body.payload.payment_link.entity.amount_paid / 100 }).eq('eventTokenId', tokenTransaction.data[0].eventTokenId.eventTokenId).eq('leadId', tokenTransaction.data[0].leadId).then((leadStatus) => {
-                        supabase.from('TokenTransactions').update({ status: "complete" }).eq('paymentLinkId', req.body.payload.payment_link.entity.id).then((resp) => {
+                    supabase.from('EventTokenLeadRelations').update({ srno: rpcRes.data[0].num === null ? 1 : parseInt(rpcRes.data[0].num) + 1, srno: rpcRes.data[0].num === null ? 1 : parseInt(rpcRes.data[0].num) + 1, paidAmount: req.body.payload.payment_link.entity.amount_paid / 100 }).eq('eventTokenId', tokenTransaction.data[0].eventTokenId.eventTokenId).eq('leadId', tokenTransaction.data[0].leadId).then((leadStatus) => {
+                        supabase.from('TokenTransactions').update({ status: "complete", eventDateTime: new Date().getTime() }).eq('paymentLinkId', req.body.payload.payment_link.entity.id).then((resp) => {
                             res.send(resp)
                             console.log(resp)
                         })
@@ -83,9 +84,16 @@ router.post('/webhook', function (req, res, next) {
                 })
             })
         })
-    } else {
+    } else if (req.body.event === 'virtual_account.credited') {
+        supabase.from('Leads').select('*').eq('razorpayCustomerId', req.body.payload.virtual_account.entity.customer_id).then((lead) => {
+            supabase.rpc('getallotmentpayments', { pid: lead.data[0].leadId }).then((payments) => {
+                console.log(payments)
+            })
+        })
         res.send("success")
         console.log(`${req.body.payload.payment.entity.amount} received for ${req.body.payload.virtual_account.entity.customer_id}`)
+    } else {
+        res.send("success")
     }
 })
 
@@ -126,6 +134,65 @@ router.post('/resend-payment-link', function (req, res, nex) {
     }).catch((err) => {
         res.send({ success: false, err })
     })
+})
+
+router.post('/create-pos-transaction', function (req, res, next) {
+    if (!req.body.TransactionNumber) {
+        res.send({ success: false, message: "Please provide Transaction Number" })
+    } else if (!req.body.amount) {
+        res.send({ success: false, message: "Please provide Transaction Amount" })
+    } else {
+        axios.post('https://www.plutuscloudserviceuat.in:8201/API/CloudBasedIntegration/V1/UploadBilledTransaction',
+            {
+                TransactionNumber: `${req.body.TransactionNumber}`,
+                SequenceNumber: 1,
+                AllowedPaymentMode: "1",
+                MerchantStorePosCode: "1221258286",
+                Amount: `${req.body.amount * 100}`,
+                UserID: "Sid",
+                MerchantID: 29610,
+                SecurityToken: "a4c9741b-2889-47b8-be2f-ba42081a246e",
+                IMEI: "VILAS1000286",
+                AutoCancelDurationInMinutes: 5
+            }).then((resp) => {
+                if (resp.data.PlutusTransactionReferenceID === 0) {
+                    res.send({ success: true, message: "Please complete previous transaction to continue" })
+                } else if (resp.data.PlutusTransactionReferenceID === -1) {
+                    res.send({ success: true, message: "Please provide new transaction number" })
+                } else {
+                    res.send({ success: true, message: "Transaction created successfully", ptrnNo: resp.data.PlutusTransactionReferenceID })
+                }
+            }).catch((err) => {
+                res.send({ success: false, err })
+            })
+    }
+})
+
+router.post('/check-pos-transaction-status', function (req, res, next) {
+    if (!req.body.ptrnNo) {
+        res.send({ success: false, message: "Please provide PRTN Number" })
+    } else {
+        axios.post('https://www.plutuscloudserviceuat.in:8201/API/CloudBasedIntegration/V1/GetCloudBasedTxnStatus',
+            {
+                MerchantID: 29610,
+                SecurityToken: "a4c9741b-2889-47b8-be2f-ba42081a246e",
+                IMEI: "VILAS1000286",
+                MerchantStorePosCode: "1221258286",
+                PlutusTransactionReferenceID: req.body.ptrnNo
+            }).then((resp) => {
+                // console.log(resp)
+                // TXN APPROVED
+                if (resp.data.ResponseMessage === 'TXN APPROVED') {
+                    res.send({ success: true, message: "completed" })
+                } else if (resp.data.ResponseMessage === 'TXN UPLOADED') {
+                    res.send({ success: true, message: "pending" })
+                } else {
+                    res.send({ success: true, message: "expired" })
+                }
+            }).catch((err) => {
+                res.send(err)
+            })
+    }
 })
 
 module.exports = router;
