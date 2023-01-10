@@ -88,7 +88,7 @@ router.post('/webhook', function (req, res, next) {
         supabase.from('Leads').select('*').eq('razorpayCustomerId', req.body.payload.virtual_account.entity.customer_id).then((lead) => {
             supabase.rpc('getallotmentpayments', { pid: lead.data[0].leadId }).then((payments) => {
                 for (let i = 0; i < payments.data.length; i++) {
-                    let amount = req.body.payload.payment.entity.amount
+                    let amount = req.body.payload.payment.entity.amount / 100
                     if (amount > 0) {
                         if ((payments.data[i].totalCost - payments.data[i].paidAmount) >= req.body.payload.payment.entity.amount) {
                             supabase.from('AllotmentPayment').update({ paidAmount: parseFloat(payments.data[0].paidAmount + req.body.payload.payment.entity.amount) }).eq('allotmentPaymentId', payments.data[0].allotmentPaymentId).then((resp) => {
