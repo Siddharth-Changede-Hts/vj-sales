@@ -11,6 +11,7 @@ var messageRouter = require('./routes/message');
 var mailRouter = require('./routes/mail');
 var notificationRouter = require('./routes/notification');
 var paymentsRouter = require('./routes/payments');
+var unitsRouter = require('./routes/units');
 
 var app = express().use('*', cors());;
 
@@ -30,6 +31,7 @@ app.use('/message', messageRouter);
 app.use('/mail', mailRouter);
 app.use('/notification', notificationRouter);
 app.use('/payments', paymentsRouter);
+app.use('/units', unitsRouter);
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {

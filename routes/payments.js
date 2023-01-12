@@ -92,7 +92,7 @@ router.post('/webhook', function (req, res, next) {
                     if (amount > 0) {
                         if ((payments.data[i].totalCost - payments.data[i].paidAmount) >= amount) {
                             await supabase.from('AllotmentPayment').update({ paidAmount: parseFloat(payments.data[i].paidAmount + amount) }).eq('allotmentPaymentId', payments.data[i].allotmentPaymentId).then(async (resp) => {
-                                await supabase.from('AllotmentTransactions').insert({ leadId: payments.data[i].leadId, unitId: payments.data[i].unitId, allotmentPaymentId: payments.data[i].allotmentPaymentId, amount: parseFloat(amount), transactionType: 'Allotment', modeOfPayment: 'Virtual acc' }).then(async (re) => {
+                                await supabase.from('AllotmentTransactions').insert({ allotmentPaymentId: payments.data[i].allotmentPaymentId, amount: parseFloat(amount), transactionType: 'Allotment', modeOfPayment: 'Virtual acc' }).then(async (re) => {
                                     await supabase.from('LeadStatus').update({ status: ((payments.data[i].totalCost - payments.data[i].paidAmount) > amount) ? 'Allotment Partial Payment Done' : 'Allotment Payment Complete' }).eq('leadId', payments.data[0].leadId).then((r) => {
                                         amount = 0
                                         console.log("success")
