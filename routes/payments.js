@@ -62,7 +62,7 @@ router.post('/webhook', function (req, res, next) {
     if (req.body.event === 'payment_link.paid') {
         console.log(req.body)
         supabase.from('TokenTransactions').select('*,eventTokenId(*)').eq('paymentLinkId', req.body.payload.payment_link.entity.id).then((tokenTransaction) => {
-            supabase.from('LeadStatus').update({ status: "Token Payment Complete" }).eq('leadId', tokenTransaction.data[0].leadId).then((leadStatus) => {
+            supabase.from('LeadStatus').update({ status: "Token Payment Completes" }).eq('leadId', tokenTransaction.data[0].leadId).then((leadStatus) => {
                 supabase.from('TokenTransactions').update({ status: "complete", eventDateTime: new Date().getTime() }).eq('paymentLinkId', req.body.payload.payment_link.entity.id).then((resp) => {
                     if (tokenTransaction.data[0].eventTokenId.algoId === '29b30596-9771-4437-807a-097e201395d3') {
                         supabase.rpc('getmaxsrno', { pid: tokenTransaction.data[0].eventTokenId.eventTokenId }).then((rpcRes) => {
