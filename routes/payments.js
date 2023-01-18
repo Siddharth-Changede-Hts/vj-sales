@@ -127,42 +127,60 @@ router.post('/webhook', function (req, res, next) {
 })
 
 router.post('/create-payment-link', function (req, res, next) {
-    instance.paymentLink.create({
-        // upi_link: true, NOT IN TEST MODE
-        amount: req.body.amount * 100,
-        currency: "INR",
-        accept_partial: false,
-        expire_by: new Date().getTime() + 86400000,
-        // expire_by: 1673013266723,
-        // first_min_partial_amount: 100,
-        description: `${req.body.tokenName} token payment link for ${req.body.eventName} event for ${req.body.leadName} lead`,
-        customer: {
-            name: `${req.body.leadName}`,
-            email: `${req.body.leadEmail}`,
-            contact: `${req.body.leadContactNumber}`
-        },
-        notify: {
-            sms: true,
-            email: true
-        },
-        reminder_enable: true,
-        // callback_url: "https://example-callback-url.com/",
-        // callback_method: "get"
-    }).then((resp) => {
-        supabase.from('TokenTransactions').insert({ paymentLinkId: resp.id, paymentId: req.body.paymentId, status: "pending", amount: resp.amount / 100, leadId: req.body.leadId, eventTokenId: req.body.eventTokenId }).then((supabaseRes) => {
-            res.send({ success: true, message: "Payment link shared successfully" })
+    if (!req.body.amount || req.body.amount <= 0) {
+        res.send({ success: false, message: "Please provide amount" })
+    } else if (!req.body.leadName || req.body.leadName === '') {
+        res.send({ success: false, message: "Please provide lead name" })
+    } else if (!req.body.leadEmail || req.body.leadEmail === 0) {
+        res.send({ success: false, message: "Please provide lead email" })
+    } else if (!req.body.leadContactNumber || req.body.leadContactNumber === 0) {
+        res.send({ success: false, message: "Please provide lead contact number" })
+    } else if (!req.body.tokenName || req.body.tokenName === '') {
+        res.send({ success: false, message: "Please provide lead token name" })
+    } else if (!req.body.eventName || req.body.eventName === '') {
+        res.send({ success: false, message: "Please provide lead event name" })
+    } else {
+        instance.paymentLink.create({
+            // upi_link: true, NOT IN TEST MODE
+            amount: req.body.amount * 100,
+            currency: "INR",
+            accept_partial: false,
+            expire_by: new Date().getTime() + 86400000,
+            // expire_by: 1673013266723,
+            // first_min_partial_amount: 100,
+            description: `${req.body.tokenName} token payment link for ${req.body.eventName} event for ${req.body.leadName} lead`,
+            customer: {
+                name: `${req.body.leadName}`,
+                email: `${req.body.leadEmail}`,
+                contact: `${req.body.leadContactNumber}`
+            },
+            notify: {
+                sms: true,
+                email: true
+            },
+            reminder_enable: true,
+            // callback_url: "https://example-callback-url.com/",
+            // callback_method: "get"
+        }).then((resp) => {
+            supabase.from('TokenTransactions').insert({ paymentLinkId: resp.id, paymentId: req.body.paymentId, status: "pending", amount: resp.amount / 100, leadId: req.body.leadId, eventTokenId: req.body.eventTokenId }).then((supabaseRes) => {
+                res.send({ success: true, message: "Payment link shared successfully" })
+            })
+        }).catch((err) => {
+            res.send({ success: false, err })
         })
-    }).catch((err) => {
-        res.send({ success: false, err })
-    })
+    }
 })
 
 router.post('/resend-payment-link', function (req, res, nex) {
-    instance.paymentLink.notifyBy(req.body.paymentId, 'sms').then((resp) => {
-        res.send({ success: true, message: "payment link send successfully" })
-    }).catch((err) => {
-        res.send({ success: false, err })
-    })
+    if (!req.body.paymentId || req.body.paymentId === '') {
+        res.send({ success: false, message: "Please provide paymentId" })
+    } else {
+        instance.paymentLink.notifyBy(req.body.paymentId, 'sms').then((resp) => {
+            res.send({ success: true, message: "payment link send successfully" })
+        }).catch((err) => {
+            res.send({ success: false, err })
+        })
+    }
 })
 
 router.post('/create-pos-transaction', function (req, res, next) {
