@@ -238,7 +238,7 @@ router.post('/check-pos-transaction-status', function (req, res, next) {
                 } else if (resp.data.ResponseMessage === 'TXN UPLOADED') {
                     res.send({ success: true, message: "pending" })
                 } else {
-                    res.send({ success: true, message: "expired" })
+                    res.send({ success: false, message: "expired" })
                 }
             }).catch((err) => {
                 res.send(err)
