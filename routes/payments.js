@@ -9,6 +9,10 @@ var instance = new Razorpay({
 });
 var supabase = require("../services/supabaseClient").supabase;
 
+router.get("/", async function (req, res, next) {
+    res.send({ success: true });
+});
+
 router.post('/create-virtual-acc', function (req, res, next) {
     if (!req.body.name || req.body.name === '') {
         res.send({ success: false, message: "Please provide lead name" })

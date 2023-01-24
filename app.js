@@ -12,6 +12,7 @@ var mailRouter = require('./routes/mail');
 var notificationRouter = require('./routes/notification');
 var paymentsRouter = require('./routes/payments');
 var unitsRouter = require('./routes/units');
+var pdfToJsonRouter = require('./routes/pdfToJson');
 
 var app = express().use('*', cors());;
 
@@ -32,6 +33,7 @@ app.use('/mail', mailRouter);
 app.use('/notification', notificationRouter);
 app.use('/payments', paymentsRouter);
 app.use('/units', unitsRouter);
+app.use('/pdfToJson', pdfToJsonRouter);
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {

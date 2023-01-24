@@ -1,7 +1,7 @@
 var express = require("express");
 var router = express.Router();
 const nodemailer = require('nodemailer');
-
+var CryptoJS = require("crypto-js");
 const mailerConfig = require('../services/emailConfig').app;
 const SMSConfig = require('../services/smsConfigs').app;
 
@@ -109,7 +109,7 @@ function sendSMs_OTP_A2P_services(otp, number) {
   return new Promise((resolve, reject) => {
     axios.get(`http://a2pservices.in/api/mt/SendSMS?user=vilas&password=123456789&senderid=VJDLLP&channel=Trans&DCS=0&flashsms=0&number=${number}&text=Dear Sir / Madam this code - ${otp} is a VJ system code to verify your enquiry. Please share it with your Channel Partner or Sales Manager from VJ Team . Regards,Team Vilas Javdekar Developers&route=20`).then(response => {
       if (response.data.ErrorMessage === "Done" && response.data.ErrorCode === "000") {
-        resolve({ success: true, data: response.data, otp });
+        resolve({ success: true, data: response.data, otp: CryptoJS.AES.encrypt(otp.toString(), 'hts secret key').toString() });
       } else {
         console.log(`response.data.ErrorCode ${number} -> `, response.data.ErrorCode);
         if (response.data.ErrorCode === "008" || response.data.ErrorCode === "8" || response.data.ErrorCode === "021" || response.data.ErrorCode === "21" || response.data.ErrorCode === "009" || response.data.ErrorCode === "9" || response.data.ErrorCode === "13") {
@@ -158,7 +158,7 @@ function sendSMs_OTP_twilio_services(otp, number) {
       const twilioClientResponse = await twilioClient.messages.create(body);
 
       // console.log("Twilio response => ", twilioClientResponse);
-      resolve({ success: true, data: twilioClientResponse, otp });
+      resolve({ success: true, data: twilioClientResponse, otp: CryptoJS.AES.encrypt(otp.toString(), 'hts secret key').toString() });
 
     } catch (error) {
       console.log("Twilio error => ", error);
