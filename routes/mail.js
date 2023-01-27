@@ -84,7 +84,7 @@ const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
     type: 'OAuth2',
-    user: mailerConfig.contactUsAt,
+    user: mailerConfig.email,
     clientId: '585541018232-gjs7r4fjvtv6rd6i9c031ad98vcmmsdi.apps.googleusercontent.com',
     clientSecret: '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',
     refreshToken: '1//04cUVdkzpGAvGCgYIARAAGAQSNwF-L9Ir0ELHQzaReWzGQ5oMZoIYoDFBYo1gzj2obzoLx-X1i5-FIJX864UAG3wJUCVhnsMVp4g',

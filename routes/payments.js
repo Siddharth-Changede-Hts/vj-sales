@@ -80,13 +80,27 @@ router.post('/webhook', function (req, res, next) {
                                         resp = resp.split('base64,')[1]
                                         await supabase.storage.from('qrcodes').upload(`${tokenTransaction.data[0].paymentId}.png`, decode(resp), { contentType: 'image/png' }).then((uploadRes) => {
                                             res.send("success")
-                                            sendMail(`https://bcvhdafxyvvaupmnqukc.supabase.co/storage/v1/object/public/qrcodes/${tokenTransaction.data[0].paymentId}.png`,tokenTransaction.data[0].leadId.personId.email,"Qr Code")
+                                            sendMail(`https://bcvhdafxyvvaupmnqukc.supabase.co/storage/v1/object/public/qrcodes/${tokenTransaction.data[0].paymentId}.png`, tokenTransaction.data[0].leadId.personId.email, "Qr Code")
                                         }).catch((err) => {
                                             res.send(err)
                                         })
                                     }).catch((err) => {
                                         res.send(err)
                                     })
+                                })
+                            })
+                        } else {
+                            supabase.from('EventTokenLeadRelations').update({ qrUrl: `qrcodes/${tokenTransaction.data[0].paymentId}.png`, paidAmount: req.body.payload.payment_link.entity.amount_paid / 100 }).eq('paymentId', tokenTransaction.data[0].paymentId).eq('leadId', tokenTransaction.data[0].leadId.leadId).then((leadStatus) => {
+                                QRCode.toDataURL(`${tokenTransaction.data[0].paymentId}`).then(async (resp) => {
+                                    resp = resp.split('base64,')[1]
+                                    await supabase.storage.from('qrcodes').upload(`${tokenTransaction.data[0].paymentId}.png`, decode(resp), { contentType: 'image/png' }).then((uploadRes) => {
+                                        res.send("success")
+                                        sendMail(`https://bcvhdafxyvvaupmnqukc.supabase.co/storage/v1/object/public/qrcodes/${tokenTransaction.data[0].paymentId}.png`, tokenTransaction.data[0].leadId.personId.email, "Qr Code")
+                                    }).catch((err) => {
+                                        res.send(err)
+                                    })
+                                }).catch((err) => {
+                                    res.send(err)
                                 })
                             })
                         }
