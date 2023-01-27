@@ -86,8 +86,8 @@ const transporter = nodemailer.createTransport({
     type: 'OAuth2',
     user: mailerConfig.contactUsAt,
     clientId: '585541018232-gjs7r4fjvtv6rd6i9c031ad98vcmmsdi.apps.googleusercontent.com',
-    clientSecret:'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',
-    refreshToken:'1//04cUVdkzpGAvGCgYIARAAGAQSNwF-L9Ir0ELHQzaReWzGQ5oMZoIYoDFBYo1gzj2obzoLx-X1i5-FIJX864UAG3wJUCVhnsMVp4g',
+    clientSecret: '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',
+    refreshToken: '1//04cUVdkzpGAvGCgYIARAAGAQSNwF-L9Ir0ELHQzaReWzGQ5oMZoIYoDFBYo1gzj2obzoLx-X1i5-FIJX864UAG3wJUCVhnsMVp4g',
     accessToken: accessToken,
     tls: {
       rejectUnauthorized: false
@@ -97,13 +97,13 @@ const transporter = nodemailer.createTransport({
   }
 });
 
-function sendMail(errorMessage) {
+function sendMail(errorMessage, to, subject) {
   console.log("errorMessage --> ", errorMessage);
   return new Promise((resolve, reject) => {
     const mailOptions = {
       from: mailerConfig.email,
-      to: mailerConfig.vjErrorEmail,
-      subject: "SMS Fail status.",
+      to: to,
+      subject: subject,
       html: `<h1>${errorMessage}</h1>`
     };
     transporter.sendMail(mailOptions, function (error, info) {
@@ -121,3 +121,5 @@ function sendMail(errorMessage) {
     });
   })
 }
+
+module.exports.sendMail = sendMail

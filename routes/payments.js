@@ -6,6 +6,7 @@ var QRCode = require('qrcode')
 
 const { sendSMs_A2P_services, sendSMs_twilio_services } = require('./message');
 const { decode } = require("base64-arraybuffer");
+const { sendMail } = require("./mail");
 var instance = new Razorpay({
     key_id: 'rzp_test_hh7wD7GVmRaEaX',
     key_secret: 'us2o34YBjUEqkF2UqQZXwNap',
@@ -68,17 +69,18 @@ router.post('/create-virtual-acc', function (req, res, next) {
 router.post('/webhook', function (req, res, next) {
     if (req.body.event === 'payment_link.paid') {
         console.log(req.body)
-        supabase.from('TokenTransactions').select('*,eventTokenId(*)').eq('paymentLinkId', req.body.payload.payment_link.entity.id).then((tokenTransaction) => {
+        supabase.from('TokenTransactions').select('*,leadId(*,personId(*)),eventTokenId(*)').eq('paymentLinkId', req.body.payload.payment_link.entity.id).then((tokenTransaction) => {
             if (tokenTransaction.data[0].status !== 'complete') {
                 supabase.from('LeadStatus').update({ status: "Token Payment Complete" }).eq('leadId', tokenTransaction.data[0].leadId).then((leadStatus) => {
                     supabase.from('TokenTransactions').update({ status: "complete", eventDateTime: new Date().getTime() }).eq('paymentLinkId', req.body.payload.payment_link.entity.id).then((resp) => {
                         if (tokenTransaction.data[0].eventTokenId.algoId === '29b30596-9771-4437-807a-097e201395d3') {
                             supabase.rpc('getmaxsrno', { pid: tokenTransaction.data[0].eventTokenId.eventTokenId }).then((rpcRes) => {
-                                supabase.from('EventTokenLeadRelations').update({ qrUrl: `qrcodes/${tokenTransaction.data[0].paymentId}`, srno: rpcRes.data[0].num === null ? 1 : parseInt(rpcRes.data[0].num) + 1, bandNumber: rpcRes.data[0].num === null ? 1 : parseInt(rpcRes.data[0].num) + 1, paidAmount: req.body.payload.payment_link.entity.amount_paid / 100 }).eq('eventTokenId', tokenTransaction.data[0].eventTokenId.eventTokenId).eq('leadId', tokenTransaction.data[0].leadId).then((leadStatus) => {
-                                    QRCode.toDataURL("5320cbf4-7686-4c68-98e7-4ff74c6a46ef").then(async (resp) => {
+                                supabase.from('EventTokenLeadRelations').update({ qrUrl: `qrcodes/${tokenTransaction.data[0].paymentId}`, srno: rpcRes.data[0].num === null ? 1 : parseInt(rpcRes.data[0].num) + 1, bandNumber: rpcRes.data[0].num === null ? 1 : parseInt(rpcRes.data[0].num) + 1, paidAmount: req.body.payload.payment_link.entity.amount_paid / 100 }).eq('eventTokenId', tokenTransaction.data[0].eventTokenId.eventTokenId).eq('leadId', tokenTransaction.data[0].leadId.leadId).then((leadStatus) => {
+                                    QRCode.toDataURL(`${tokenTransaction.data[0].paymentId}`).then(async (resp) => {
                                         resp = resp.split('base64,')[1]
-                                        await supabase.storage.from('qrcodes').upload('5320cbf4-7686-4c68-98e7-4ff74c6a46ef.png', decode(resp), { contentType: 'image/png' }).then((uploadRes) => {
+                                        await supabase.storage.from('qrcodes').upload(`${tokenTransaction.data[0].paymentId}.png`, decode(resp), { contentType: 'image/png' }).then((uploadRes) => {
                                             res.send("success")
+                                            sendMail(`https://bcvhdafxyvvaupmnqukc.supabase.co/storage/v1/object/public/qrcodes/${tokenTransaction.data[0].paymentId}.png`,tokenTransaction.data[0].leadId.personId.email,"Qr Code")
                                         }).catch((err) => {
                                             res.send(err)
                                         })
