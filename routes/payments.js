@@ -2,7 +2,10 @@ const axios = require("axios").default;
 var express = require('express');
 var router = express.Router();
 var Razorpay = require('razorpay');
+var QRCode = require('qrcode')
+
 const { sendSMs_A2P_services, sendSMs_twilio_services } = require('./message');
+const { decode } = require("base64-arraybuffer");
 var instance = new Razorpay({
     key_id: 'rzp_test_hh7wD7GVmRaEaX',
     key_secret: 'us2o34YBjUEqkF2UqQZXwNap',
@@ -71,9 +74,17 @@ router.post('/webhook', function (req, res, next) {
                     supabase.from('TokenTransactions').update({ status: "complete", eventDateTime: new Date().getTime() }).eq('paymentLinkId', req.body.payload.payment_link.entity.id).then((resp) => {
                         if (tokenTransaction.data[0].eventTokenId.algoId === '29b30596-9771-4437-807a-097e201395d3') {
                             supabase.rpc('getmaxsrno', { pid: tokenTransaction.data[0].eventTokenId.eventTokenId }).then((rpcRes) => {
-                                supabase.from('EventTokenLeadRelations').update({ srno: rpcRes.data[0].num === null ? 1 : parseInt(rpcRes.data[0].num) + 1, bandNumber: rpcRes.data[0].num === null ? 1 : parseInt(rpcRes.data[0].num) + 1, paidAmount: req.body.payload.payment_link.entity.amount_paid / 100 }).eq('eventTokenId', tokenTransaction.data[0].eventTokenId.eventTokenId).eq('leadId', tokenTransaction.data[0].leadId).then((leadStatus) => {
-                                    res.send(resp)
-                                    console.log(resp)
+                                supabase.from('EventTokenLeadRelations').update({ qrUrl: `qrcodes/${tokenTransaction.data[0].paymentId}`, srno: rpcRes.data[0].num === null ? 1 : parseInt(rpcRes.data[0].num) + 1, bandNumber: rpcRes.data[0].num === null ? 1 : parseInt(rpcRes.data[0].num) + 1, paidAmount: req.body.payload.payment_link.entity.amount_paid / 100 }).eq('eventTokenId', tokenTransaction.data[0].eventTokenId.eventTokenId).eq('leadId', tokenTransaction.data[0].leadId).then((leadStatus) => {
+                                    QRCode.toDataURL("5320cbf4-7686-4c68-98e7-4ff74c6a46ef").then(async (resp) => {
+                                        resp = resp.split('base64,')[1]
+                                        await supabase.storage.from('qrcodes').upload('5320cbf4-7686-4c68-98e7-4ff74c6a46ef.png', decode(resp), { contentType: 'image/png' }).then((uploadRes) => {
+                                            res.send("success")
+                                        }).catch((err) => {
+                                            res.send(err)
+                                        })
+                                    }).catch((err) => {
+                                        res.send(err)
+                                    })
                                 })
                             })
                         }
