@@ -273,4 +273,16 @@ router.post('/check-pos-transaction-status', function (req, res, next) {
     }
 })
 
+router.post('/get-payment-link', function (req, res, next) {
+    if (!req.body.linkId || req.body.linkId === '') {
+        res.send({ success: false, message: "Please provide link id" })
+    } else {
+        instance.paymentLink.fetch(req.body.linkId).then((resp) => {
+            res.send({ success: true, link: resp.short_url })
+        }).catch((err) => {
+            res.send({ success: false, message: err })
+        })
+    }
+})
+
 module.exports = router;
