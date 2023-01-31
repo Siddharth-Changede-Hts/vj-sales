@@ -17,60 +17,65 @@ router.get("/", async function (req, res, next) {
     res.send({ success: true });
 });
 
-router.post('/create-virtual-acc', function (req, res, next) {
-    if (!req.body.name || req.body.name === '') {
-        res.send({ success: false, message: "Please provide lead name" })
-    } else if (!req.body.contactNumber || req.body.contactNumber === '') {
-        res.send({ success: false, message: "Please provide lead contact number" })
-    } else if (!req.body.email || req.body.email === '') {
-        res.send({ success: false, message: "Please provide lead email" })
-    } else if (!req.body.leadId || req.body.leadId === '') {
-        res.send({ success: false, message: "Please provide lead lead id" })
-    } else {
-        instance.customers.create({
-            name: req.body.name,
-            contact: req.body.contactNumber,
-            email: req.body.email,
-        }).then((customerRes) => {
-            instance.virtualAccounts.create({
-                receivers: {
-                    types: [
-                        "bank_account",
-                        "vpa"
-                    ]
-                },
-                customer_id: customerRes.id,
-            }).then((accRes) => {
-                supabase.from('Leads').update(
-                    {
-                        razorpayCustomerId: customerRes.id,
-                        virtualAccDetails: { bankAccountNumber: accRes.receivers[0].account_number, bankIFSCCode: accRes.receivers[0].ifsc, bankUpiId: accRes.receivers[1].address, bankBeneficiaryName: accRes.receivers[0].name }
-                    }).eq('leadId', req.body.leadId).then((personRes) => {
-                        // CHANGE CONDITION 
-                        if (req.body.contactNumber.toString().substr(0, 3) !== '+91') {
-                            sendSMs_A2P_services("Hello", req.body.contactNumber)
-                        } else {
-                            sendSMs_twilio_services(`Account Number : ${accRes.receivers[0].account_number} \n IFSC Code : ${accRes.receivers[0].ifsc} \n Beneficiary Name : ${accRes.receivers[0].name} \n UPI Id : ${accRes.receivers[1].address}`, req.body.contactNumber).then((resp) => {
-                                res.send({ success: true, message: "Virtual Account created successfully" })
-                            }).catch((err) => {
-                                res.send({ success: false, err })
-                            })
-                        }
-                    })
-            })
-        }).catch((customerErr) => {
-            if (customerErr.error.description === 'Customer already exists for the merchant') {
-                res.send({ success: false, errorMsg: "Virtual Account already Exists" })
-            }
+// router.post('/create-virtual-acc', function (req, res, next) {
+//     if (!req.body.name || req.body.name === '') {
+//         res.send({ success: false, message: "Please provide lead name" })
+//     } else if (!req.body.contactNumber || req.body.contactNumber === '') {
+//         res.send({ success: false, message: "Please provide lead contact number" })
+//     } else if (!req.body.email || req.body.email === '') {
+//         res.send({ success: false, message: "Please provide lead email" })
+//     } else if (!req.body.leadId || req.body.leadId === '') {
+//         res.send({ success: false, message: "Please provide lead lead id" })
+//     } else {
+//         // createVirtualAcc(req.body.name,req.body.contactNumber,req.body.email,"api")
+//     }
+// })
+
+function createVirtualAcc(name, contactNumber, email) {
+    instance.customers.create({
+        name: name,
+        contact: contactNumber,
+        email: email,
+    }).then((customerRes) => {
+        instance.virtualAccounts.create({
+            receivers: {
+                types: [
+                    "bank_account",
+                    "vpa"
+                ]
+            },
+            customer_id: customerRes.id,
+        }).then((accRes) => {
+            supabase.from('Leads').update(
+                {
+                    razorpayCustomerId: customerRes.id,
+                    virtualAccDetails: { bankAccountNumber: accRes.receivers[0].account_number, bankIFSCCode: accRes.receivers[0].ifsc, bankUpiId: accRes.receivers[1].address, bankBeneficiaryName: accRes.receivers[0].name }
+                }).eq('leadId', req.body.leadId).then((personRes) => {
+                    // CHANGE CONDITION 
+                    if (req.body.contactNumber.toString().substr(0, 3) !== '+91') {
+                        sendSMs_A2P_services("Hello", req.body.contactNumber)
+                    } else {
+                        sendSMs_twilio_services(`Account Number : ${accRes.receivers[0].account_number} \n IFSC Code : ${accRes.receivers[0].ifsc} \n Beneficiary Name : ${accRes.receivers[0].name} \n UPI Id : ${accRes.receivers[1].address}`, req.body.contactNumber).then((resp) => {
+                            // res.send({ success: true, message: "Virtual Account created successfully" })
+                        }).catch((err) => {
+                            // res.send({ success: false, err })
+                        })
+                    }
+                })
         })
-    }
-})
+    }).catch((customerErr) => {
+        if (customerErr.error.description === 'Customer already exists for the merchant') {
+            res.send({ success: false, errorMsg: "Virtual Account already Exists" })
+        }
+    })
+}
 
 router.post('/webhook', function (req, res, next) {
     if (req.body.event === 'payment_link.paid') {
         console.log(req.body)
         supabase.from('TokenTransactions').select('*,leadId(*,personId(*)),eventTokenId(*)').eq('paymentLinkId', req.body.payload.payment_link.entity.id).then((tokenTransaction) => {
             if (tokenTransaction.data[0].status !== 'complete') {
+                createVirtualAcc(tokenTransaction.data[0].leadId.personId.name,tokenTransaction.data[0].leadId.personId.contactNumber,tokenTransaction.data[0].leadId.personId.email)
                 supabase.from('LeadStatus').update({ status: "Token Payment Complete" }).eq('leadId', tokenTransaction.data[0].leadId.leadId).then((leadStatus) => {
                     supabase.from('TokenTransactions').update({ status: "complete", eventDateTime: new Date().getTime() }).eq('paymentLinkId', req.body.payload.payment_link.entity.id).then((resp) => {
                         if (tokenTransaction.data[0].eventTokenId.algoId === '29b30596-9771-4437-807a-097e201395d3') {
