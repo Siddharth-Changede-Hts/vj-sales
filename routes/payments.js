@@ -50,10 +50,10 @@ function createVirtualAcc(name, contactNumber, email) {
                 {
                     razorpayCustomerId: customerRes.id,
                     virtualAccDetails: { bankAccountNumber: accRes.receivers[0].account_number, bankIFSCCode: accRes.receivers[0].ifsc, bankUpiId: accRes.receivers[1].address, bankBeneficiaryName: accRes.receivers[0].name }
-                }).eq('leadId', req.body.leadId).then((personRes) => {
+                }).eq('leadId', leadId).then((personRes) => {
                     // CHANGE CONDITION 
-                    if (req.body.contactNumber.toString().substr(0, 3) !== '+91') {
-                        sendSMs_A2P_services("Hello", req.body.contactNumber)
+                    if (contactNumber.toString().substr(0, 3) !== '+91') {
+                        sendSMs_A2P_services("Hello", contactNumber)
                     } else {
                         sendSMs_twilio_services(`Account Number : ${accRes.receivers[0].account_number} \n IFSC Code : ${accRes.receivers[0].ifsc} \n Beneficiary Name : ${accRes.receivers[0].name} \n UPI Id : ${accRes.receivers[1].address}`, req.body.contactNumber).then((resp) => {
                             // res.send({ success: true, message: "Virtual Account created successfully" })
