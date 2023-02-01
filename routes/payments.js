@@ -31,7 +31,7 @@ router.get("/", async function (req, res, next) {
 //     }
 // })
 
-function createVirtualAcc(name, contactNumber, email) {
+function createVirtualAcc(name, contactNumber, email, leadId) {
     instance.customers.create({
         name: name,
         contact: contactNumber,
@@ -65,7 +65,7 @@ function createVirtualAcc(name, contactNumber, email) {
         })
     }).catch((customerErr) => {
         if (customerErr.error.description === 'Customer already exists for the merchant') {
-            res.send({ success: false, errorMsg: "Virtual Account already Exists" })
+            // res.send({ success: false, errorMsg: "Virtual Account already Exists" })
         }
     })
 }
@@ -75,7 +75,9 @@ router.post('/webhook', function (req, res, next) {
         console.log(req.body)
         supabase.from('TokenTransactions').select('*,leadId(*,personId(*)),eventTokenId(*)').eq('paymentLinkId', req.body.payload.payment_link.entity.id).then((tokenTransaction) => {
             if (tokenTransaction.data[0].status !== 'complete') {
-                createVirtualAcc(tokenTransaction.data[0].leadId.personId.name,tokenTransaction.data[0].leadId.personId.contactNumber,tokenTransaction.data[0].leadId.personId.email)
+                if (!tokenTransaction.data[0].leadId.razorpayCustomerId || tokenTransaction.data[0].leadId.razorpayCustomerId === '') {
+                    createVirtualAcc(tokenTransaction.data[0].leadId.personId.name, tokenTransaction.data[0].leadId.personId.contactNumber, tokenTransaction.data[0].leadId.personId.email, tokenTransaction.data[0].leadId.leadId)
+                }
                 supabase.from('LeadStatus').update({ status: "Token Payment Complete" }).eq('leadId', tokenTransaction.data[0].leadId.leadId).then((leadStatus) => {
                     supabase.from('TokenTransactions').update({ status: "complete", eventDateTime: new Date().getTime() }).eq('paymentLinkId', req.body.payload.payment_link.entity.id).then((resp) => {
                         if (tokenTransaction.data[0].eventTokenId.algoId === '29b30596-9771-4437-807a-097e201395d3') {
@@ -111,6 +113,8 @@ router.post('/webhook', function (req, res, next) {
                         }
                     })
                 })
+            } else {
+                res.send({ success: true })
             }
         })
     } else if (req.body.event === 'payment_link.expired' || req.body.event === 'payment_link.cancelled') {
