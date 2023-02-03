@@ -109,7 +109,7 @@ router.post('/webhook', function (req, res, next) {
                                             resp = resp.split('base64,')[1]
                                             await supabase.storage.from('qrcodes').upload(`${tokenTransaction.data[0].paymentId}.png`, decode(resp), { contentType: 'image/png' }).then((uploadRes) => {
                                                 res.send("success")
-                                                sendMail(`https://bcvhdafxyvvaupmnqukc.supabase.co/storage/v1/object/public/qrcodes/${tokenTransaction.data[0].paymentId}.png`, tokenTransaction.data[0].leadId.personId.email, "Qr Code")
+                                                sendMail(`https://vj-customer-app-testing.web.app/`, tokenTransaction.data[0].leadId.personId.email, "Qr Code")
                                             }).catch((err) => {
                                                 res.send(err)
                                             })
