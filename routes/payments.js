@@ -72,17 +72,54 @@ function createVirtualAcc(name, contactNumber, email, leadId) {
 
 router.post('/webhook', function (req, res, next) {
     if (req.body.event === 'payment_link.paid') {
-        console.log(req.body)
-        supabase.from('TokenTransactions').select('*,leadId(*,personId(*)),eventTokenId(*)').eq('paymentLinkId', req.body.payload.payment_link.entity.id).then((tokenTransaction) => {
-            if (tokenTransaction.data[0].status !== 'complete') {
-                if (!tokenTransaction.data[0].leadId.razorpayCustomerId || tokenTransaction.data[0].leadId.razorpayCustomerId === '') {
-                    createVirtualAcc(tokenTransaction.data[0].leadId.personId.name, tokenTransaction.data[0].leadId.personId.contactNumber, tokenTransaction.data[0].leadId.personId.email, tokenTransaction.data[0].leadId.leadId)
+        if (req.body.payload.payment_link.entity.description.includes('Allotment payment link')) {
+            supabase.from('AllotmentTransactions').select('*,allotmentPaymentId(*)').eq('paymentLinkId', req.body.payload.payment_link.entity.id).then((allotmentRes) => {
+                if (allotmentRes.data[0].status === 'pending') {
+                    if (allotmentRes.data[0].allotmentPaymentId.pricingType === 'preselect') {
+                        supabase.from('AllotmentTransactions').update({ status: "complete" }).eq('paymentLinkId', req.body.payload.payment_link.entity.id).then((resp) => {
+                            supabase.from('AllotmentPayment').update({ paidAmount: parseFloat(allotmentRes.data[0].allotmentPaymentId.paidAmount + parseInt(req.body.payload.payment_link.entity.amount_paid / 100)), }).eq('allotmentPaymentId', allotmentRes.data[0].allotmentPaymentId.allotmentPaymentId).then((_resp) => {
+                                supabase.from('LeadStatus').update({ status: "Preselect Confirmation Pending" }).eq('leadId', allotmentRes.data[0].allotmentPaymentId.leadId.leadId).then((res) => {
+                                    res.send("success")
+                                })
+                            })
+                        })
+                    } else {
+                        supabase.from('AllotmentTransactions').update({ status: "complete" }).eq('paymentLinkId', req.body.payload.payment_link.entity.id).then((resp) => {
+                            supabase.from('AllotmentPayment').update({ paidAmount: parseFloat(allotmentRes.data[0].allotmentPaymentId.paidAmount + parseInt(req.body.payload.payment_link.entity.amount_paid / 100)), }).eq('allotmentPaymentId', allotmentRes.data[0].allotmentPaymentId.allotmentPaymentId).then((_resp) => {
+                                supabase.from('LeadStatus').update({ status: 500000 - allotmentRes.data[0].allotmentPaymentId.paidAmount > parseInt(req.body.payload.payment_link.entity.amount_paid / 100) ? 'Allotment Partial Payment Done' : 'Allotment Payment Complete', }).eq('leadId', allotmentRes.data[0].allotmentPaymentId.leadId.leadId).then((res) => {
+                                    res.send("success")
+                                })
+                            })
+                        })
+                    }
                 }
-                supabase.from('LeadStatus').update({ status: "Token Payment Complete" }).eq('leadId', tokenTransaction.data[0].leadId.leadId).then((leadStatus) => {
-                    supabase.from('TokenTransactions').update({ status: "complete", eventDateTime: new Date().getTime() }).eq('paymentLinkId', req.body.payload.payment_link.entity.id).then((resp) => {
-                        if (tokenTransaction.data[0].eventTokenId.algoId === '29b30596-9771-4437-807a-097e201395d3') {
-                            supabase.rpc('getmaxsrno', { pid: tokenTransaction.data[0].eventTokenId.eventTokenId }).then((rpcRes) => {
-                                supabase.from('EventTokenLeadRelations').update({ qrUrl: `qrcodes/${tokenTransaction.data[0].paymentId}.png`, srno: rpcRes.data[0].num === null ? 1 : parseInt(rpcRes.data[0].num) + 1, bandNumber: rpcRes.data[0].num === null ? 1 : parseInt(rpcRes.data[0].num) + 1, paidAmount: req.body.payload.payment_link.entity.amount_paid / 100 }).eq('paymentId', tokenTransaction.data[0].paymentId).eq('leadId', tokenTransaction.data[0].leadId.leadId).then((leadStatus) => {
+            })
+        } else {
+            supabase.from('TokenTransactions').select('*,leadId(*,personId(*)),eventTokenId(*)').eq('paymentLinkId', req.body.payload.payment_link.entity.id).then((tokenTransaction) => {
+                if (tokenTransaction.data[0].status === 'pending') {
+                    if (!tokenTransaction.data[0].leadId.razorpayCustomerId || tokenTransaction.data[0].leadId.razorpayCustomerId === '') {
+                        createVirtualAcc(tokenTransaction.data[0].leadId.personId.name, tokenTransaction.data[0].leadId.personId.contactNumber, tokenTransaction.data[0].leadId.personId.email, tokenTransaction.data[0].leadId.leadId)
+                    }
+                    supabase.from('LeadStatus').update({ status: "Token Payment Complete" }).eq('leadId', tokenTransaction.data[0].leadId.leadId).then((leadStatus) => {
+                        supabase.from('TokenTransactions').update({ status: "complete", eventDateTime: new Date().getTime() }).eq('paymentLinkId', req.body.payload.payment_link.entity.id).then((resp) => {
+                            if (tokenTransaction.data[0].eventTokenId.algoId === '29b30596-9771-4437-807a-097e201395d3') {
+                                supabase.rpc('getmaxsrno', { pid: tokenTransaction.data[0].eventTokenId.eventTokenId }).then((rpcRes) => {
+                                    supabase.from('EventTokenLeadRelations').update({ qrUrl: `qrcodes/${tokenTransaction.data[0].paymentId}.png`, srno: rpcRes.data[0].num === null ? 1 : parseInt(rpcRes.data[0].num) + 1, bandNumber: rpcRes.data[0].num === null ? 1 : parseInt(rpcRes.data[0].num) + 1, paidAmount: req.body.payload.payment_link.entity.amount_paid / 100 }).eq('paymentId', tokenTransaction.data[0].paymentId).eq('leadId', tokenTransaction.data[0].leadId.leadId).then((leadStatus) => {
+                                        QRCode.toDataURL(`${tokenTransaction.data[0].paymentId}`).then(async (resp) => {
+                                            resp = resp.split('base64,')[1]
+                                            await supabase.storage.from('qrcodes').upload(`${tokenTransaction.data[0].paymentId}.png`, decode(resp), { contentType: 'image/png' }).then((uploadRes) => {
+                                                res.send("success")
+                                                sendMail(`https://bcvhdafxyvvaupmnqukc.supabase.co/storage/v1/object/public/qrcodes/${tokenTransaction.data[0].paymentId}.png`, tokenTransaction.data[0].leadId.personId.email, "Qr Code")
+                                            }).catch((err) => {
+                                                res.send(err)
+                                            })
+                                        }).catch((err) => {
+                                            res.send(err)
+                                        })
+                                    })
+                                })
+                            } else {
+                                supabase.from('EventTokenLeadRelations').update({ qrUrl: `qrcodes/${tokenTransaction.data[0].paymentId}.png`, paidAmount: req.body.payload.payment_link.entity.amount_paid / 100 }).eq('paymentId', tokenTransaction.data[0].paymentId).eq('leadId', tokenTransaction.data[0].leadId.leadId).then((leadStatus) => {
                                     QRCode.toDataURL(`${tokenTransaction.data[0].paymentId}`).then(async (resp) => {
                                         resp = resp.split('base64,')[1]
                                         await supabase.storage.from('qrcodes').upload(`${tokenTransaction.data[0].paymentId}.png`, decode(resp), { contentType: 'image/png' }).then((uploadRes) => {
@@ -95,28 +132,14 @@ router.post('/webhook', function (req, res, next) {
                                         res.send(err)
                                     })
                                 })
-                            })
-                        } else {
-                            supabase.from('EventTokenLeadRelations').update({ qrUrl: `qrcodes/${tokenTransaction.data[0].paymentId}.png`, paidAmount: req.body.payload.payment_link.entity.amount_paid / 100 }).eq('paymentId', tokenTransaction.data[0].paymentId).eq('leadId', tokenTransaction.data[0].leadId.leadId).then((leadStatus) => {
-                                QRCode.toDataURL(`${tokenTransaction.data[0].paymentId}`).then(async (resp) => {
-                                    resp = resp.split('base64,')[1]
-                                    await supabase.storage.from('qrcodes').upload(`${tokenTransaction.data[0].paymentId}.png`, decode(resp), { contentType: 'image/png' }).then((uploadRes) => {
-                                        res.send("success")
-                                        sendMail(`https://bcvhdafxyvvaupmnqukc.supabase.co/storage/v1/object/public/qrcodes/${tokenTransaction.data[0].paymentId}.png`, tokenTransaction.data[0].leadId.personId.email, "Qr Code")
-                                    }).catch((err) => {
-                                        res.send(err)
-                                    })
-                                }).catch((err) => {
-                                    res.send(err)
-                                })
-                            })
-                        }
+                            }
+                        })
                     })
-                })
-            } else {
-                res.send({ success: true })
-            }
-        })
+                } else {
+                    res.send({ success: true })
+                }
+            })
+        }
     } else if (req.body.event === 'payment_link.expired' || req.body.event === 'payment_link.cancelled') {
         supabase.from('TokenTransactions').select('*,eventTokenId(*)').eq('paymentLinkId', req.body.payload.payment_link.entity.id).then((tokenTransaction) => {
             supabase.from('LeadStatus').update({ status: "Site Visit Done" }).eq('leadId', tokenTransaction.data[0].leadId).then((leadStatus) => {
@@ -175,9 +198,15 @@ router.post('/create-payment-link', function (req, res, next) {
         res.send({ success: false, message: "Please provide lead email" })
     } else if (!req.body.leadContactNumber || req.body.leadContactNumber === 0) {
         res.send({ success: false, message: "Please provide lead contact number" })
-    } else if (!req.body.tokenName || req.body.tokenName === '') {
+    } else if (req.body.mode === 'token' && (!req.body.tokenName || req.body.tokenName === '')) {
         res.send({ success: false, message: "Please provide lead token name" })
-    } else if (!req.body.eventName || req.body.eventName === '') {
+    } else if (req.body.mode === 'token' && (!req.body.eventName || req.body.eventName === '')) {
+        res.send({ success: false, message: "Please provide lead event name" })
+    } else if (req.body.mode !== 'token' && (!req.body.allotmentPaymentId || req.body.allotmentPaymentId === '')) {
+        res.send({ success: false, message: "Please provide lead event name" })
+    } else if (req.body.mode !== 'token' && (!req.body.unitId || req.body.unitId === '')) {
+        res.send({ success: false, message: "Please provide lead event name" })
+    } else if (req.body.mode !== 'token' && (!req.body.leadId || req.body.leadId === '')) {
         res.send({ success: false, message: "Please provide lead event name" })
     } else {
         instance.paymentLink.create({
@@ -188,7 +217,7 @@ router.post('/create-payment-link', function (req, res, next) {
             expire_by: new Date().getTime() + 86400000,
             // expire_by: 1673013266723,
             // first_min_partial_amount: 100,
-            description: `${req.body.tokenName} token payment link for ${req.body.eventName} event for ${req.body.leadName} lead`,
+            description: req.body.mode === 'token' ? `${req.body.tokenName} token payment link for ${req.body.eventName} event for ${req.body.leadName} lead` : `Allotment payment link for ${req.body.leadName} lead`,
             customer: {
                 name: `${req.body.leadName}`,
                 email: `${req.body.leadEmail}`,
@@ -202,9 +231,15 @@ router.post('/create-payment-link', function (req, res, next) {
             // callback_url: "https://example-callback-url.com/",
             // callback_method: "get"
         }).then((resp) => {
-            supabase.from('TokenTransactions').insert({ paymentLinkId: resp.id, paymentId: req.body.paymentId, status: "pending", amount: resp.amount / 100, leadId: req.body.leadId, eventTokenId: req.body.eventTokenId }).then((supabaseRes) => {
-                res.send({ success: true, message: "Payment link shared successfully" })
-            })
+            if (req.body.mode === 'token') {
+                supabase.from('TokenTransactions').insert({ paymentLinkId: resp.id, paymentId: req.body.paymentId, status: "pending", amount: resp.amount / 100, leadId: req.body.leadId, eventTokenId: req.body.eventTokenId }).then((supabaseRes) => {
+                    res.send({ success: true, message: "Payment link shared successfully" })
+                })
+            } else {
+                supabase.from('AllotmentTransactions').insert({ paymentLinkId: resp.id, modeOfPayment: "Razorpay Link", transactionType: "Allotment", allotmentPaymentId: req.body.allotmentPaymentId, unitId: req.body.unitId, status: "pending", amount: resp.amount / 100, leadId: req.body.leadId }).then((supabaseRes) => {
+                    res.send({ success: true, message: "Payment link shared successfully" })
+                })
+            }
         }).catch((err) => {
             res.send({ success: false, err })
         })
