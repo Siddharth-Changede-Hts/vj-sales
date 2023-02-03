@@ -87,7 +87,15 @@ router.post('/webhook', function (req, res, next) {
                         supabase.from('AllotmentTransactions').update({ status: "complete" }).eq('paymentLinkId', req.body.payload.payment_link.entity.id).then((resp) => {
                             supabase.from('AllotmentPayment').update({ paidAmount: parseFloat(allotmentRes.data[0].allotmentPaymentId.paidAmount + parseInt(req.body.payload.payment_link.entity.amount_paid / 100)), }).eq('allotmentPaymentId', allotmentRes.data[0].allotmentPaymentId.allotmentPaymentId).then((_resp) => {
                                 supabase.from('LeadStatus').update({ status: 500000 - allotmentRes.data[0].allotmentPaymentId.paidAmount > parseInt(req.body.payload.payment_link.entity.amount_paid / 100) ? 'Allotment Partial Payment Done' : 'Allotment Payment Complete', }).eq('leadId', allotmentRes.data[0].allotmentPaymentId.leadId.leadId).then((res) => {
-                                    res.send("success")
+                                    if (500000 - allotmentRes.data[0].allotmentPaymentId.paidAmount <= parseInt(req.body.payload.payment_link.entity.amount_paid / 100)) {
+                                        supabase.from('InventoryStatus').select('*').eq('status', "Alloted").then((statusRes) => {
+                                            supabase.from('Inventory').update({ inventoryStatusId: statusRes.data[0].inventoryStatusId }).eq('unitId', allotmentRes.data[0].allotmentPaymentId.unitId.unitId).then((updateRes) => {
+                                                res.send("success")
+                                            })
+                                        })
+                                    } else {
+                                        res.send("success")
+                                    }
                                 })
                             })
                         })
