@@ -169,7 +169,7 @@ router.post('/webhook', function (req, res, next) {
         })
     } else if (req.body.event === 'virtual_account.credited') {
         supabase.from('Leads').select('*').eq('razorpayCustomerId', req.body.payload.virtual_account.entity.customer_id).then((lead) => {
-            supabase.from('AllotmentPayment').select('*,unitId(*,inventoryTypeId(*),projectId(*)),inventoryMergedId(*),leadId(*,personId(*)),paymentId(*,eventId(*))').eq('leadId', lead.data[0].leadId).neq('paidAmount', 500000).then(async (payments) => {
+            supabase.from('AllotmentPayment').select('*,unitId(*,inventoryTypeId(*),projectId(*)),inventoryMergedId(*),leadId(*,personId(*)),paymentId(*,eventId(*))').eq('leadId', lead.data[0].leadId).neq('paidAmount', 500000).order('created_at').then(async (payments) => {
                 let amount = parseInt(req.body.payload.virtual_account.entity.amount_paid / 100)
                 for (let i = 0; i < payments.data.length; i++) {
                     if (amount > 0) {
