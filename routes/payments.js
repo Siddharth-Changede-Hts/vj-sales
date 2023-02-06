@@ -73,7 +73,7 @@ function createVirtualAcc(name, contactNumber, email, leadId) {
 router.post('/webhook', function (req, res, next) {
     if (req.body.event === 'payment_link.paid') {
         if (req.body.payload.payment_link.entity.description.includes('Allotment payment link')) {
-            supabase.from('AllotmentTransactions').select('*,allotmentPaymentId(*)').eq('paymentLinkId', req.body.payload.payment_link.entity.id).then((allotmentRes) => {
+            supabase.from('AllotmentTransactions').select('*,allotmentPaymentId(*,inventoryMergedId(*))').eq('paymentLinkId', req.body.payload.payment_link.entity.id).then((allotmentRes) => {
                 if (allotmentRes.data[0].status === 'pending') {
                     if (allotmentRes.data[0].allotmentPaymentId.pricingType === 'preselect') {
                         supabase.from('AllotmentTransactions').update({ status: "complete" }).eq('paymentLinkId', req.body.payload.payment_link.entity.id).then((resp) => {
@@ -169,7 +169,7 @@ router.post('/webhook', function (req, res, next) {
         })
     } else if (req.body.event === 'virtual_account.credited') {
         supabase.from('Leads').select('*').eq('razorpayCustomerId', req.body.payload.virtual_account.entity.customer_id).then((lead) => {
-            supabase.from('AllotmentPayment').select('*,inventoryMergedId(*),unitId(*,inventoryTypeId(*),projectId(*)),inventoryMergedId(*),leadId(*,personId(*)),paymentId(*,eventId(*))').eq('leadId', lead.data[0].leadId).then(async (payments) => {
+            supabase.from('AllotmentPayment').select('*,unitId(*,inventoryTypeId(*),projectId(*)),inventoryMergedId(*),leadId(*,personId(*)),paymentId(*,eventId(*))').eq('leadId', lead.data[0].leadId).then(async (payments) => {
                 let amount = parseInt(req.body.payload.payment.entity.amount / 100)
                 for (let i = 0; i < payments.data.length; i++) {
                     if (amount > 0) {
