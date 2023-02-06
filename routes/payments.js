@@ -3,7 +3,7 @@ var express = require('express');
 var router = express.Router();
 var Razorpay = require('razorpay');
 var QRCode = require('qrcode')
-
+const supabaseUrl = 'https://bcvhdafxyvvaupmnqukc.supabase.co/storage/v1/object/public/'
 const { sendSMs_A2P_services, sendSMs_twilio_services } = require('./message');
 const { decode } = require("base64-arraybuffer");
 const { sendMail } = require("./mail");
@@ -12,6 +12,118 @@ var instance = new Razorpay({
     key_secret: 'us2o34YBjUEqkF2UqQZXwNap',
 });
 var supabase = require("../services/supabaseClient").supabase;
+
+function QrTemplate(qrData) {
+    return (
+        `
+          <div style=" display: flex;width: 30%;margin: 2rem;background: #fffefe;border: 1px solid rgba(0, 0, 0, 0.12);overflow: hidden;box-shadow: 0px 1px 3px rgb(16 24 40 / 10%), 0px 1px 2px rgb(16 24 40 / 6%);border-radius: 0.8rem;flex-direction: column;">
+            <div style=" display: flex;
+          padding: 1.3rem;
+          gap: 1rem;">
+              <div>
+                <img style="  width: 4rem;
+          height: 4rem;" src=${qrData.eventImg}></img>
+              </div>
+              <div style=" display: flex;
+          flex-direction: column;
+          gap: 0.5rem;">
+                <span style=" font-family: Inter-Medium;
+          font-weight: 700;
+          font-size: 1.2rem;
+          line-height: 2rem;
+          display: flex;
+          align-items: center;
+          color: #000000;">${qrData.eventName}</span>
+                <span style="  font-family: Inter-Medium;
+          font-style: normal;
+        
+          font-size: 1rem;
+          line-height: 1.6rem;
+          display: flex;
+          align-items: center;
+          color: #4b5563;">${new Date(qrData.eventDateTime).toDateString()}</span>                
+              </div>
+            </div>
+            <div style="  border-bottom: 0.3rem dashed rgb(72 66 66 / 75%);
+          transform: rotate(-0.04deg);">
+            </div>
+            <div style=" display: flex;
+          padding: 1.3rem;
+          gap: 1rem;
+        align-items: center;">
+              <div>
+                <img style="  width: 4rem;
+          height: 4rem;" src=${qrData.qrCode}></img>
+              </div>
+              <div style=" display: flex;
+          flex-direction: column;
+          gap: 0.5rem;">
+                <span style=" font-family: Inter-Medium;
+          font-weight: 700;
+        
+          font-size: 1rem;
+          line-height: 1.6rem;
+          display: flex;
+          align-items: center;
+          color: #000000;">${qrData.tokenTitle}</span>
+                <span style="  font-family: Inter-Medium;
+          font-style: normal;
+         
+          font-size: 1rem;
+          line-height: 1.6rem;
+          display: flex;
+          align-items: center;
+          color: #4b5563;">Token Number:${qrData.tokenDisplayNumber}</span>
+              </div>
+            </div>
+            <div style=" border-bottom: 0.3rem dashed rgb(72 66 66 / 75%);
+          transform: rotate(-0.04deg);"></div>
+            <div style="  gap: 1rem;
+            display: flex;
+            background: rgba(220, 240, 255, 0.62);
+            border-radius: 0.8rem;
+            margin: 0.5rem 2rem;
+            padding: 1rem;
+            align-items: flex-start;
+            justify-content: space-between;">
+              <span style="  font-family: Inter-Regular;
+          font-style: normal;
+          font-weight: 700;
+          font-size: 1.2rem;
+          line-height: 2rem;
+          display: flex;
+          align-items: center;
+        
+          color: #000000;">Token Amount</span>
+              <span style="
+                        display: flex;
+                        flex-direction: column;
+                ">
+                <span style="   font-family: Inter-Regular;
+            font-style: normal;
+            font-weight: 700;
+            
+          font-size: 1rem;
+          line-height: 1.6rem;
+            display: flex;
+            align-items: center;
+            color: #4b5563;">₹${qrData.amount}</span>
+                <span style="   font-family: Inter-Regular;
+            font-style: normal;
+            font-weight: 700;
+        
+          font-size: 1rem;
+          line-height: 1.6rem;
+          
+            display: flex;
+            align-items: center;
+          
+            color: #4b5563;">${qrData.tokenDate}</span>
+              </span>
+            </div>
+          </div>`
+    )
+}
 
 router.get("/", async function (req, res, next) {
     res.send({ success: true });
@@ -111,7 +223,7 @@ router.post('/webhook', function (req, res, next) {
                 }
             })
         } else {
-            supabase.from('TokenTransactions').select('*,leadId(*,personId(*)),eventTokenId(*)').eq('paymentLinkId', req.body.payload.payment_link.entity.id).then((tokenTransaction) => {
+            supabase.from('TokenTransactions').select('*,leadId(*,personId(*)),eventTokenId(*,tokenId(*),eventId(*))').eq('paymentLinkId', req.body.payload.payment_link.entity.id).then((tokenTransaction) => {
                 if (tokenTransaction.data[0].status === 'pending') {
                     if (!tokenTransaction.data[0].leadId.razorpayCustomerId || tokenTransaction.data[0].leadId.razorpayCustomerId === '') {
                         createVirtualAcc(tokenTransaction.data[0].leadId.personId.name, tokenTransaction.data[0].leadId.personId.contactNumber, tokenTransaction.data[0].leadId.personId.email, tokenTransaction.data[0].leadId.leadId)
@@ -125,7 +237,17 @@ router.post('/webhook', function (req, res, next) {
                                             resp = resp.split('base64,')[1]
                                             await supabase.storage.from('qrcodes').upload(`${tokenTransaction.data[0].paymentId}.png`, decode(resp), { contentType: 'image/png' }).then((uploadRes) => {
                                                 res.send("success")
-                                                sendMail(`https://vj-customer-app-testing.web.app/`, tokenTransaction.data[0].leadId.personId.email, "Qr Code")
+                                                let qrData = {
+                                                    eventImg: `${supabaseUrl}${tokenTransaction.data[0].eventTokenId.eventId.bannerImgUrl}`,
+                                                    eventName: tokenTransaction.data[0].eventTokenId.eventId.title,
+                                                    eventDateTime: tokenTransaction.data[0].eventTokenId.eventId.startDateTime,
+                                                    tokenTitle: tokenTransaction.data[0].eventTokenId.tokenId.name,
+                                                    tokenDisplayNumber: tokenTransaction.data[0].eventTokenId.tokenNumber,
+                                                    tokenDate: tokenTransaction.data[0].eventTokenId.created_at,
+                                                    qrCode: `${supabaseUrl}qrcodes/${tokenTransaction.data[0].paymentId.paymentId}.png`,
+                                                    amount: tokenTransaction.data[0].eventTokenId.tokenId.amount,
+                                                }
+                                                sendMail(QrTemplate(qrData), tokenTransaction.data[0].leadId.personId.email, `Token for ${tokenTransaction.data[0].eventTokenId.eventId.title}`)
                                             }).catch((err) => {
                                                 res.send(err)
                                             })
@@ -223,6 +345,27 @@ router.post('/webhook', function (req, res, next) {
     } else {
         res.send("success")
     }
+})
+
+router.get('/sendEmailForQr', function (req, res, next) {
+    supabase.from('TokenTransactions').select('*,leadId(*,personId(*)),eventTokenId(*,tokenId(*),eventId(*)),paymentId(*)').eq('paymentLinkId', 'plink_LAobbaX0235zGk').then((tokenTransaction) => {
+        QRCode.toDataURL(`584277e3-fe87-4653-9820-3b528c42a213`).then(async (resp) => {
+            res.send(`${supabaseUrl}qrcodes/${tokenTransaction.data[0].paymentId.paymentId}.png`)
+            resp = resp.split('base64,')[1]
+            let qrData = {
+                eventImg: `${supabaseUrl}${tokenTransaction.data[0].eventTokenId.eventId.bannerImgUrl}`,
+                eventName: tokenTransaction.data[0].eventTokenId.eventId.title,
+                eventDateTime: tokenTransaction.data[0].eventTokenId.eventId.startDateTime,
+                tokenTitle: tokenTransaction.data[0].eventTokenId.tokenId.name,
+                tokenDisplayNumber: tokenTransaction.data[0].paymentId.tokenNumber,
+                tokenDate: tokenTransaction.data[0].eventTokenId.created_at,
+                qrCode: `${supabaseUrl}qrcodes/${tokenTransaction.data[0].paymentId.paymentId}.png`,
+                amount: tokenTransaction.data[0].eventTokenId.tokenId.amount,
+            }
+
+            sendMail(QrTemplate(qrData), tokenTransaction.data[0].leadId.personId.email, `Token for ${tokenTransaction.data[0].eventTokenId.eventId.title}`)
+        })
+    })
 })
 
 router.post('/create-payment-link', function (req, res, next) {
