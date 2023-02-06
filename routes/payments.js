@@ -169,19 +169,19 @@ router.post('/webhook', function (req, res, next) {
         })
     } else if (req.body.event === 'virtual_account.credited') {
         supabase.from('Leads').select('*').eq('razorpayCustomerId', req.body.payload.virtual_account.entity.customer_id).then((lead) => {
-            supabase.from('AllotmentPayment').select('*,unitId(*,inventoryTypeId(*),projectId(*)),inventoryMergedId(*),leadId(*,personId(*)),paymentId(*,eventId(*))').eq('leadId', lead.data[0].leadId).then(async (payments) => {
-                let amount = parseInt(req.body.payload.payment.entity.amount / 100)
+            supabase.from('AllotmentPayment').select('*,unitId(*,inventoryTypeId(*),projectId(*)),inventoryMergedId(*),leadId(*,personId(*)),paymentId(*,eventId(*))').eq('leadId', lead.data[0].leadId).neq('paidAmount', 500000).then(async (payments) => {
+                let amount = parseInt(req.body.payload.virtual_account.entity.amount_paid / 100)
                 for (let i = 0; i < payments.data.length; i++) {
                     if (amount > 0) {
                         if ((500000 - payments.data[i].paidAmount) >= amount) {
                             await supabase.from('AllotmentPayment').update({ paidAmount: parseFloat(payments.data[i].paidAmount + amount) }).eq('allotmentPaymentId', payments.data[i].allotmentPaymentId).then(async (resp) => {
-                                await supabase.from('AllotmentTransactions').insert({ allotmentPaymentId: payments.data[i].allotmentPaymentId, amount: parseFloat(amount), transactionType: 'Allotment', modeOfPayment: 'Virtual acc' }).then(async (re) => {
-                                    await supabase.from('LeadStatus').update({ status: ((500000 - payments.data[i].paidAmount) > amount) ? 'Allotment Partial Payment Done' : 'Allotment Payment Complete' }).eq('leadId', payments.data[0].leadId).then((r) => {
+                                await supabase.from('AllotmentTransactions').insert({ allotmentPaymentId: payments.data[i].allotmentPaymentId, amount: parseFloat(amount), transactionType: 'Allotment', modeOfPayment: 'Virtual acc', leadId: payments.data[i].leadId.leadId, unitId: payments.data[i].unitId.unitId }).then(async (re) => {
+                                    await supabase.from('LeadStatus').update({ status: ((500000 - payments.data[i].paidAmount) > amount) ? 'Allotment Partial Payment Done' : 'Allotment Payment Complete' }).eq('leadId', payments.data[i].leadId).then(async (r) => {
                                         if (500000 - payments.data[i].paidAmount <= parseInt(amount)) {
-                                            supabase.from('InventoryStatus').select('*').eq('status', "Alloted").then((statusRes) => {
+                                            await supabase.from('InventoryStatus').select('*').eq('status', "Alloted").then(async (statusRes) => {
                                                 if (payments.data[i].inventoryMergedId && payments.data[i].inventoryMergedId !== '') {
-                                                    supabase.from('Inventory').update({ inventoryStatusId: statusRes.data[0].inventoryStatusId }).eq('unitId', payments.data[i].inventoryMergedId.unit1Id).then((updateRes) => {
-                                                        supabase.from('Inventory').update({ inventoryStatusId: statusRes.data[0].inventoryStatusId }).eq('unitId', payments.data[i].inventoryMergedId.unit2Id).then((updateRes) => {
+                                                    await supabase.from('Inventory').update({ inventoryStatusId: statusRes.data[0].inventoryStatusId }).eq('unitId', payments.data[i].inventoryMergedId.unit1Id).then(async (updateRes) => {
+                                                        await supabase.from('Inventory').update({ inventoryStatusId: statusRes.data[0].inventoryStatusId }).eq('unitId', payments.data[i].inventoryMergedId.unit2Id).then((updateRes) => {
                                                             amount = 0
                                                             console.log("success")
                                                             res.send("success")
@@ -205,9 +205,9 @@ router.post('/webhook', function (req, res, next) {
                             })
                         } else {
                             amount = amount - (500000 - payments.data[i].paidAmount)
-                            await supabase.from('AllotmentPayment').update({ paidAmount: parseFloat((500000 - payments.data[i].paidAmount)) }).eq('allotmentPaymentId', payments.data[i].allotmentPaymentId).then(async (resp) => {
-                                await supabase.from('AllotmentTransactions').insert({ leadId: payments.data[i].leadId, unitId: payments.data[i].unitId, allotmentPaymentId: payments.data[i].allotmentPaymentId, amount: parseFloat((500000 - payments.data[i].paidAmount)), transactionType: 'Allotment', modeOfPayment: 'Virtual acc' }).then(async (re) => {
-                                    await supabase.from('LeadStatus').update({ status: 'Allotment Payment Complete' }).eq('leadId', payments.data[0].leadId).then((r) => {
+                            await supabase.from('AllotmentPayment').update({ paidAmount: parseFloat(payments.data[i].paidAmount + parseFloat((500000 - payments.data[i].paidAmount))) }).eq('allotmentPaymentId', payments.data[i].allotmentPaymentId).then(async (resp) => {
+                                await supabase.from('AllotmentTransactions').insert({ leadId: payments.data[i].leadId, unitId: payments.data[i].unitId, allotmentPaymentId: payments.data[i].allotmentPaymentId, amount: parseFloat((500000 - payments.data[i].paidAmount)), transactionType: 'Allotment', modeOfPayment: 'Virtual acc', leadId: payments.data[i].leadId.leadId, unitId: payments.data[i].unitId.unitId }).then(async (re) => {
+                                    await supabase.from('LeadStatus').update({ status: 'Allotment Payment Complete' }).eq('leadId', payments.data[i].leadId).then((r) => {
                                         console.log("success")
                                         // res.send("success")
                                     })
