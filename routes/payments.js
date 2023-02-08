@@ -247,8 +247,8 @@ router.post('/webhook', function (req, res, next) {
                                                     eventDateTime: tokenTransaction.data[0].eventTokenId.eventId.startDateTime,
                                                     tokenTitle: tokenTransaction.data[0].eventTokenId.tokenId.name,
                                                     tokenDisplayNumber: tokenTransaction.data[0].eventTokenId.tokenNumber,
-                                                    tokenDate: tokenTransaction.data[0].eventTokenId.created_at,
-                                                    qrCode: `${supabaseUrl}qrcodes/${tokenTransaction.data[0].paymentId.paymentId}.png`,
+                                                    tokenDate: tokenTransaction.data[0].paymentId.created_at,
+                                                    qrCode: `${supabaseUrl}qrcodes/${tokenTransaction.data[0].paymentId}.png`,
                                                     amount: tokenTransaction.data[0].eventTokenId.tokenId.amount,
                                                 }
                                                 sendMail(QrTemplate(qrData), tokenTransaction.data[0].leadId.personId.email, `Token for ${tokenTransaction.data[0].eventTokenId.eventId.title}`)
@@ -386,11 +386,13 @@ router.post('/create-payment-link', function (req, res, next) {
     } else if (req.body.mode === 'token' && (!req.body.eventName || req.body.eventName === '')) {
         res.send({ success: false, message: "Please provide lead event name" })
     } else if (req.body.mode !== 'token' && (!req.body.allotmentPaymentId || req.body.allotmentPaymentId === '')) {
-        res.send({ success: false, message: "Please provide lead event name" })
-    } else if (req.body.mode !== 'token' && (!req.body.unitId || req.body.unitId === '')) {
-        res.send({ success: false, message: "Please provide lead event name" })
-    } else if (req.body.mode !== 'token' && (!req.body.leadId || req.body.leadId === '')) {
-        res.send({ success: false, message: "Please provide lead event name" })
+        res.send({ success: false, message: "Please provide allotmentPaymentId" })
+    }
+    //  else if (req.body.mode !== 'token' && (!req.body.unitId || req.body.unitId === '')) {
+    //     res.send({ success: false, message: "Please provide lead event name" })
+    // }
+    else if (req.body.mode !== 'token' && (!req.body.leadId || req.body.leadId === '')) {
+        res.send({ success: false, message: "Please provide leadId" })
     } else {
         instance.paymentLink.create({
             // upi_link: true, NOT IN TEST MODE
@@ -419,7 +421,7 @@ router.post('/create-payment-link', function (req, res, next) {
                     res.send({ success: true, message: "Payment link shared successfully" })
                 })
             } else {
-                supabase.from('AllotmentTransactions').insert({ paymentLinkId: resp.id, modeOfPayment: "Razorpay Link", transactionType: "Allotment", allotmentPaymentId: req.body.allotmentPaymentId, unitId: req.body.unitId, status: "pending", amount: resp.amount / 100, leadId: req.body.leadId }).then((supabaseRes) => {
+                supabase.from('AllotmentTransactions').insert({ paymentLinkId: resp.id, modeOfPayment: "Razorpay Link", transactionType: "Allotment", allotmentPaymentId: req.body.allotmentPaymentId, unitId: req.body.unitId, inventoryMergeId: req.body.inventoryMergeId, status: "pending", amount: resp.amount / 100, leadId: req.body.leadId }).then((supabaseRes) => {
                     res.send({ success: true, message: "Payment link shared successfully" })
                 })
             }
