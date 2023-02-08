@@ -192,7 +192,7 @@ router.post('/webhook', function (req, res, next) {
                 if (allotmentRes.data[0].status === 'pending') {
                     if (allotmentRes.data[0].allotmentPaymentId.pricingType === 'preselect') {
                         supabase.from('AllotmentTransactions').update({ status: "complete" }).eq('paymentLinkId', req.body.payload.payment_link.entity.id).then((resp) => {
-                            supabase.from('AllotmentPayment').update({ preselectConfirmation: "Confirmation pending", paidAmount: parseFloat(allotmentRes.data[0].allotmentPaymentId.paidAmount + parseInt(req.body.payload.payment_link.entity.amount_paid / 100)), }).eq('allotmentPaymentId', allotmentRes.data[0].allotmentPaymentId.allotmentPaymentId).then((_resp) => {
+                            supabase.from('AllotmentPayment').update({ preselectConfirmation: "confirmation pending", paidAmount: parseFloat(allotmentRes.data[0].allotmentPaymentId.paidAmount + parseInt(req.body.payload.payment_link.entity.amount_paid / 100)), }).eq('allotmentPaymentId', allotmentRes.data[0].allotmentPaymentId.allotmentPaymentId).then((_resp) => {
                                 supabase.from('LeadStatus').update({ status: "Preselect Confirmation Pending" }).eq('leadId', allotmentRes.data[0].allotmentPaymentId.leadId.leadId).then((res) => {
                                     res.send("success")
                                 })
