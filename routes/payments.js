@@ -14,114 +14,117 @@ var instance = new Razorpay({
 var supabase = require("../services/supabaseClient").supabase;
 
 function QrTemplate(qrData) {
+    // style = "width: 40%;margin: 2rem;padding: 1rem;background: #fffefe;border: 1px solid rgba(0, 0, 0, 0.12);overflow: hidden;box-shadow: 0px 1px 3px rgb(16 24 40 / 10%), 0px 1px 2px rgb(16 24 40 / 6%);border-radius: 0.8rem;flex-direction: column;" >
+
     return (
-        `
-          <div style=" display: flex;width: 30%;margin: 2rem;background: #fffefe;border: 1px solid rgba(0, 0, 0, 0.12);overflow: hidden;box-shadow: 0px 1px 3px rgb(16 24 40 / 10%), 0px 1px 2px rgb(16 24 40 / 6%);border-radius: 0.8rem;flex-direction: column;">
-            <div style=" display: flex;
-          padding: 1.3rem;
-          gap: 1rem;">
-              <div>
-                <img style="  width: 4rem;
-          height: 4rem;" src=${qrData.eventImg}></img>
-              </div>
-              <div style=" display: flex;
-          flex-direction: column;
-          gap: 0.5rem;">
-                <span style=" font-family: Inter-Medium;
-          font-weight: 700;
-          font-size: 1.2rem;
-          line-height: 2rem;
-          display: flex;
-          align-items: center;
-          color: #000000;">${qrData.eventName}</span>
-                <span style="  font-family: Inter-Medium;
-          font-style: normal;
-        
-          font-size: 1rem;
-          line-height: 1.6rem;
-          display: flex;
-          align-items: center;
-          color: #4b5563;">${new Date(qrData.eventDateTime).toDateString()}</span>                
-              </div>
-            </div>
-            <div style="  border-bottom: 0.3rem dashed rgb(72 66 66 / 75%);
-          transform: rotate(-0.04deg);">
-            </div>
-            <div style=" display: flex;
-          padding: 1.3rem;
-          gap: 1rem;
-        align-items: center;">
-              <div>
-                <img style="  width: 4rem;
-          height: 4rem;" src=${qrData.qrCode}></img>
-              </div>
-              <div style=" display: flex;
-          flex-direction: column;
-          gap: 0.5rem;">
-                <span style=" font-family: Inter-Medium;
-          font-weight: 700;
-        
-          font-size: 1rem;
-          line-height: 1.6rem;
-          display: flex;
-          align-items: center;
-          color: #000000;">${qrData.tokenTitle}</span>
-                <span style="  font-family: Inter-Medium;
-          font-style: normal;
-         
-          font-size: 1rem;
-          line-height: 1.6rem;
-          display: flex;
-          align-items: center;
-          color: #4b5563;">Token Number:${qrData.tokenDisplayNumber}</span>
-              </div>
-            </div>
-            <div style=" border-bottom: 0.3rem dashed rgb(72 66 66 / 75%);
-          transform: rotate(-0.04deg);"></div>
-            <div style="  gap: 1rem;
-            display: flex;
-            background: rgba(220, 240, 255, 0.62);
-            border-radius: 0.8rem;
-            margin: 0.5rem 2rem;
-            padding: 1rem;
-            align-items: flex-start;
-            justify-content: space-between;">
-              <span style="  font-family: Inter-Regular;
-          font-style: normal;
-          font-weight: 700;
-          font-size: 1.2rem;
-          line-height: 2rem;
-          display: flex;
-          align-items: center;
-        
-          color: #000000;">Token Amount</span>
-              <span style="
-                        display: flex;
-                        flex-direction: column;
-                ">
-                <span style="   font-family: Inter-Regular;
-            font-style: normal;
-            font-weight: 700;
-            
-          font-size: 1rem;
-          line-height: 1.6rem;
-            display: flex;
-            align-items: center;
-            color: #4b5563;">₹${qrData.amount}</span>
-                <span style="   font-family: Inter-Regular;
-            font-style: normal;
-            font-weight: 700;
-        
-          font-size: 1rem;
-          line-height: 1.6rem;
-          
-            display: flex;
-            align-items: center;
-          
-            color: #4b5563;">${qrData.tokenDate}</span>
-              </span>
-            </div>
-          </div>`
+        `<div 
+        style = "margin: 2rem;padding: 1rem;background: #fffefe;border: 1px solid rgba(0, 0, 0, 0.12);overflow: hidden;border-radius: 0.8rem;flex-direction: column;" >
+        <div style="display: block;
+    margin-bottom: 0.5rem;
+    margin-top: 0.5rem;">
+      <div style="    width: 25%;
+    display: inline-block">
+        <img style="width: 5rem;
+     height: 5rem;" src=${qrData.eventImg}></img>
+      </div>
+      <div style="display: inline-block;
+    width: 70%;
+    vertical-align: top;">
+        <span style=" font-family: Roboto;
+     font-weight: 700;
+     font-size: 1.2rem;
+     line-height: 2rem;
+     display: flex;
+     align-items: center;
+  word-break: break-all;
+     color: #000000;">${qrData.eventName}</span>
+        <span style=" font-family: Roboto;
+     font-style: normal;
+      word-break: break-all;
+     font-size: 1rem;
+     line-height: 1.6rem;
+     display: flex;
+     align-items: center;
+     color: #4b5563;">${new Date(qrData.eventDateTime).toDateString()}</span>
+      </div>
+    </div>
+    <div style=" border-bottom: 0.3rem dashed lightslategray;
+     transform: rotate(-0.04deg);">
+    </div>
+    <div style="display: block;
+    margin-bottom: 0.5rem;
+    margin-top: 0.5rem;">
+      <div style="  width: 25%;
+    display: inline-block">
+        <img style=" width: 5rem;
+     height: 5rem;" src=${qrData.qrCode}></img>
+      </div>
+      <div style="display: inline-block;
+    width: 70%;
+    margin-top: 15px;
+    vertical-align: top;">
+        <span style=" font-family: Roboto;
+     font-weight: 700;
+    
+     font-size: 1rem;
+     line-height: 1.6rem;
+     display: flex;
+     align-items: center;
+  word-break: break-all;
+     color: #000000;">${qrData.tokenTitle}</span>
+
+        <span style=" font-family: Roboto;
+     font-style: normal;
+      word-break: break-all;
+     font-size: 1rem;
+     line-height: 1.6rem;
+     display: flex;
+     align-items: center;
+     color: #4b5563;">Token Number:${qrData.tokenDisplayNumber}</span>
+
+      </div>
+    </div>
+    <div style=" border-bottom: 0.3rem dashed lightslategray"></div>
+    <div style="display:inline-block;
+      background: rgba(220, 240, 255, 0.62);
+width: calc(100% - 5rem);
+      border-radius: 0.8rem;
+      margin: 1.5rem 2rem 0.5rem 2rem;
+      padding:0.2rem 1rem 0.5rem 1rem;">
+      <div style=" font-family: Roboto;
+     font-style: normal;
+     font-weight: 700;
+     font-size: 1.2rem;
+     line-height: 2rem;
+     align-items: center;
+    display:inline-block;
+width:35%;
+     color: #000000;">Token Amount</div>
+      <div style="
+    display:inline-block;
+width:62%;
+        ">
+        <span style="  font-family: Roboto;
+      font-style: normal;
+      font-weight: 700;
+       word-break: break-all;
+     font-size: 1rem;
+     line-height: 1.6rem;
+     margin-right:2rem;
+      align-items: center;
+      color: #4b5563;">₹${qrData.amount}</span>
+        <span style="  font-family: Roboto;
+      font-style: normal;
+      font-weight: 700;
+    
+     font-size: 1rem;
+     line-height: 1.6rem;
+      align-items: center;
+       word-break: break-all;
+      color: #4b5563;">${new Date(qrData.tokenDate).toDateString()}</span>
+      </div>
+    </div>
+  </div>`
     )
 }
 
@@ -189,7 +192,7 @@ router.post('/webhook', function (req, res, next) {
                 if (allotmentRes.data[0].status === 'pending') {
                     if (allotmentRes.data[0].allotmentPaymentId.pricingType === 'preselect') {
                         supabase.from('AllotmentTransactions').update({ status: "complete" }).eq('paymentLinkId', req.body.payload.payment_link.entity.id).then((resp) => {
-                            supabase.from('AllotmentPayment').update({ paidAmount: parseFloat(allotmentRes.data[0].allotmentPaymentId.paidAmount + parseInt(req.body.payload.payment_link.entity.amount_paid / 100)), }).eq('allotmentPaymentId', allotmentRes.data[0].allotmentPaymentId.allotmentPaymentId).then((_resp) => {
+                            supabase.from('AllotmentPayment').update({ preselectConfirmation:"Confirmation pending",paidAmount: parseFloat(allotmentRes.data[0].allotmentPaymentId.paidAmount + parseInt(req.body.payload.payment_link.entity.amount_paid / 100)), }).eq('allotmentPaymentId', allotmentRes.data[0].allotmentPaymentId.allotmentPaymentId).then((_resp) => {
                                 supabase.from('LeadStatus').update({ status: "Preselect Confirmation Pending" }).eq('leadId', allotmentRes.data[0].allotmentPaymentId.leadId.leadId).then((res) => {
                                     res.send("success")
                                 })
