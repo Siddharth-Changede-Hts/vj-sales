@@ -206,8 +206,8 @@ router.post('/webhook', function (req, res, next) {
                                     if (allotmentRes.data[0].allotmentPaymentId.paidAmount == 0) {
                                         supabase.from('InventoryStatus').select('*').eq('status', "Alloted").then((statusRes) => {
                                             if (allotmentRes.data[0].inventoryMergeId && allotmentRes.data[0].inventoryMergeId !== '') {
-                                                supabase.from('Inventory').update({ inventoryStatusId: statusRes.data[0].inventoryStatusId }).eq('unitId', allotmentRes.data[0].inventoryMergedId.unit1Id).then((updateRes) => {
-                                                    supabase.from('Inventory').update({ inventoryStatusId: statusRes.data[0].inventoryStatusId }).eq('unitId', allotmentRes.data[0].inventoryMergedId.unit2Id).then((updateRes) => {
+                                                supabase.from('Inventory').update({ inventoryStatusId: statusRes.data[0].inventoryStatusId }).eq('unitId', allotmentRes.data[0].inventoryMergeId.unit1Id).then((updateRes) => {
+                                                    supabase.from('Inventory').update({ inventoryStatusId: statusRes.data[0].inventoryStatusId }).eq('unitId', allotmentRes.data[0].inventoryMergeId.unit2Id).then((updateRes) => {
                                                         res.send("success")
                                                     })
                                                 })
