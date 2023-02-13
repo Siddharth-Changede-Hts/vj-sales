@@ -1,6 +1,7 @@
 var express = require("express");
 var router = express.Router();
 var supabase = require("../services/supabaseClient").supabase;
+let unitCount = {}
 
 router.post('/updateStatus', function (req, res, next) {
     if (!req.body.unitId || req.body.unitId === '') {
@@ -38,6 +39,66 @@ router.post('/updateStatus', function (req, res, next) {
                 })
             }
         }, req.body.time * 60000);
+    }
+})
+
+router.get('/getToken', function (req, res, next) {
+    var token = new Date().getTime().toString();
+    unitCount[token] = {
+        updatedCount: 0,
+        processFinished: false,
+    };
+    setTimeout(() => {
+        if (unitCount[token]) {
+            delete unitCount[token];
+        }
+    }, 1000 * 60 * 60 * 60);
+    res.send({ token });
+})
+
+router.post('/updateInventoryPrice', async function (req, res, next) {
+    if (req.query.token && unitCount[req.query.token]) {
+        let units = req.body.units
+        res.send({ success: true, message: "Updation Started" })
+        let count = 0
+        for (let i = 0; i < units.length; i++) {
+            // await supabase.from('b').insert({ name: "sid" }).then((resp) => {
+            let resp = await supabase.from('Inventory').update({ totalCost: units[i].totalCost, SDR: units[i].SDR, OCR: units[i].OCR, GST: units[i].GST, BSP: units[i].BSP }).eq('unitId', units[i].unitId)
+            unitCount[req.query.token].updatedCount = ++count
+            unitCount[req.query.token].processFinished = false
+            if (units.length === count) {
+                unitCount[req.query.token].processFinished = true
+            }
+            // })
+        }
+        console.log("end")
+    } else {
+        res.send({ success: false, message: "Please provide token" })
+    }
+})
+
+router.get('/getCount', function (req, res, next) {
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Connection", "keep-alive");
+    res.flushHeaders(); // flush the headers to establish SSE with client
+    if (!req.query.token || !unitCount[req.query.token]) {
+        // let data = JSON.stringify(unitCount[token]);
+        res.send({ success: false, message: "Please provide token" })
+        // res.end();
+    } else {
+        let refreshIntervalId = setInterval(() => {
+            let refreshRate = 5000;
+            let id = new Date().getTime();
+            let data = JSON.stringify(unitCount[req.query.token]);
+            let messageToSend = `retry: ${refreshRate}\nid:${id}\ndata: ${data}\n\n`;
+            res.write(messageToSend);
+            if (unitCount[req.query.token].processFinished) {
+                res.end();
+                clearInterval(refreshIntervalId);
+            }
+        }, 1000);
     }
 })
 
