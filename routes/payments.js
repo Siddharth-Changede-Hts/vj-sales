@@ -266,7 +266,17 @@ router.post('/webhook', function (req, res, next) {
                                         resp = resp.split('base64,')[1]
                                         await supabase.storage.from('qrcodes').upload(`${tokenTransaction.data[0].paymentId}.png`, decode(resp), { contentType: 'image/png' }).then((uploadRes) => {
                                             res.send("success")
-                                            sendMail(`https://bcvhdafxyvvaupmnqukc.supabase.co/storage/v1/object/public/qrcodes/${tokenTransaction.data[0].paymentId}.png`, tokenTransaction.data[0].leadId.personId.email, "Qr Code")
+                                            let qrData = {
+                                                eventImg: `${supabaseUrl}${tokenTransaction.data[0].eventTokenId.eventId.bannerImgUrl}`,
+                                                eventName: tokenTransaction.data[0].eventTokenId.eventId.title,
+                                                eventDateTime: tokenTransaction.data[0].eventTokenId.eventId.startDateTime,
+                                                tokenTitle: tokenTransaction.data[0].eventTokenId.tokenId.name,
+                                                tokenDisplayNumber: tokenTransaction.data[0].eventTokenId.tokenNumber,
+                                                tokenDate: tokenTransaction.data[0].paymentId.created_at,
+                                                qrCode: `${supabaseUrl}qrcodes/${tokenTransaction.data[0].paymentId}.png`,
+                                                amount: tokenTransaction.data[0].eventTokenId.tokenId.amount,
+                                            }
+                                            sendMail(QrTemplate(qrData), tokenTransaction.data[0].leadId.personId.email, `Token for ${tokenTransaction.data[0].eventTokenId.eventId.title}`)
                                         }).catch((err) => {
                                             res.send(err)
                                         })
