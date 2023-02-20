@@ -261,7 +261,7 @@ router.post('/webhook', function (req, res, next) {
                                     })
                                 })
                             } else {
-                                supabase.from('EventTokenLeadRelations').update({ qrUrl: `qrcodes/${tokenTransaction.data[0].paymentId}.png`, paidAmount: req.body.payload.payment_link.entity.amount_paid / 100 }).eq('paymentId', tokenTransaction.data[0].paymentId).eq('leadId', tokenTransaction.data[0].leadId.leadId).then((leadStatus) => {
+                                supabase.from('EventTokenLeadRelations').update({ status: "active", qrUrl: `qrcodes/${tokenTransaction.data[0].paymentId}.png`, paidAmount: req.body.payload.payment_link.entity.amount_paid / 100 }).eq('paymentId', tokenTransaction.data[0].paymentId).eq('leadId', tokenTransaction.data[0].leadId.leadId).then((leadStatus) => {
                                     QRCode.toDataURL(`${tokenTransaction.data[0].paymentId}`).then(async (resp) => {
                                         resp = resp.split('base64,')[1]
                                         await supabase.storage.from('qrcodes').upload(`${tokenTransaction.data[0].paymentId}.png`, decode(resp), { contentType: 'image/png' }).then((uploadRes) => {
