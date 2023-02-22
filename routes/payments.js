@@ -188,38 +188,27 @@ function createVirtualAcc(name, contactNumber, email, leadId) {
 router.post('/webhook', function (req, res, next) {
     if (req.body.event === 'payment_link.paid') {
         if (req.body.payload.payment_link.entity.description.includes('Allotment payment link')) {
-            supabase.from('AllotmentTransactions').select('*,allotmentPaymentId(*,inventoryMergedId(*))').eq('paymentLinkId', req.body.payload.payment_link.entity.id).then((allotmentRes) => {
+            supabase.from('AllotmentTransactions').select('*,allotmentPaymentId(*,paymentId(*,eventId(*)),inventoryMergedId(*))').eq('paymentLinkId', req.body.payload.payment_link.entity.id).then((allotmentRes) => {
+                let amountToBePaid = 500000
+                if (allotmentRes.data[0].allotmentPaymentId.paymentId && allotmentRes.data[0].allotmentPaymentId.paymentId.eventId.adjustTokenAmt && allotmentRes.data[0].allotmentPaymentId.pricingType !== 'preselect') {
+                    amountToBePaid = 500000 - allotmentRes.data[0].allotmentPaymentId.paymentId.paidAmount
+                }
                 if (allotmentRes.data[0].status === 'pending') {
                     if (allotmentRes.data[0].allotmentPaymentId.pricingType === 'preselect') {
                         supabase.from('AllotmentTransactions').update({ status: "complete" }).eq('paymentLinkId', req.body.payload.payment_link.entity.id).then((resp) => {
-                            supabase.from('AllotmentPayment').update({ preselectConfirmation: "confirmation pending", paidAmount: parseFloat(allotmentRes.data[0].allotmentPaymentId.paidAmount + parseInt(req.body.payload.payment_link.entity.amount_paid / 100)), }).eq('allotmentPaymentId', allotmentRes.data[0].allotmentPaymentId.allotmentPaymentId).then((_resp) => {
+                            supabase.from('AllotmentPayment').update({ status: 'complete', preselectConfirmation: "confirmation pending", paidAmount: parseFloat(allotmentRes.data[0].allotmentPaymentId.paidAmount + parseInt(req.body.payload.payment_link.entity.amount_paid / 100)), }).eq('allotmentPaymentId', allotmentRes.data[0].allotmentPaymentId.allotmentPaymentId).then((_resp) => {
                                 supabase.from('LeadStatus').update({ status: "Preselect Confirmation Pending" }).eq('leadId', allotmentRes.data[0].allotmentPaymentId.leadId).then((res) => {
-                                    res.send("success")
+                                    supabase.from('EventTokenLeadRelations').update({ paidAmount: 500000, status: 'alloted' }).eq('paymentId', allotmentRes.data[0].allotmentPaymentId.paymentId.paymentId).then((rr) => {
+                                        res.send("success")
+                                    })
                                 })
                             })
                         })
                     } else {
                         supabase.from('AllotmentTransactions').update({ status: "complete" }).eq('paymentLinkId', req.body.payload.payment_link.entity.id).then((resp) => {
-                            supabase.from('AllotmentPayment').update({ paidAmount: parseFloat(allotmentRes.data[0].allotmentPaymentId.paidAmount + parseInt(req.body.payload.payment_link.entity.amount_paid / 100)), }).eq('allotmentPaymentId', allotmentRes.data[0].allotmentPaymentId.allotmentPaymentId).then((_resp) => {
-                                supabase.from('LeadStatus').update({ status: 500000 - allotmentRes.data[0].allotmentPaymentId.paidAmount > parseInt(req.body.payload.payment_link.entity.amount_paid / 100) ? 'Allotment Partial Payment Done' : 'Allotment Payment Complete', }).eq('leadId', allotmentRes.data[0].allotmentPaymentId.leadId).then((rees) => {
-                                    // if (500000 - allotmentRes.data[0].allotmentPaymentId.paidAmount <= parseInt(req.body.payload.payment_link.entity.amount_paid / 100)) {
-                                    if (allotmentRes.data[0].allotmentPaymentId.paidAmount == 0) {
-                                        supabase.from('InventoryStatus').select('*').eq('status', "Alloted").then((statusRes) => {
-                                            if (allotmentRes.data[0].inventoryMergeId && allotmentRes.data[0].inventoryMergeId !== '') {
-                                                supabase.from('Inventory').update({ inventoryStatusId: statusRes.data[0].inventoryStatusId }).eq('unitId', allotmentRes.data[0].allotmentPaymentId.inventoryMergedId.unit1Id).then((updateRes) => {
-                                                    supabase.from('Inventory').update({ inventoryStatusId: statusRes.data[0].inventoryStatusId }).eq('unitId', allotmentRes.data[0].allotmentPaymentId.inventoryMergedId.unit2Id).then((updateRes) => {
-                                                        res.send("success")
-                                                    })
-                                                })
-                                            } else {
-                                                supabase.from('Inventory').update({ inventoryStatusId: statusRes.data[0].inventoryStatusId }).eq('unitId', allotmentRes.data[0].allotmentPaymentId.unitId).then((updateRes) => {
-                                                    res.send("success")
-                                                })
-                                            }
-                                        })
-                                    } else {
-                                        res.send("success")
-                                    }
+                            supabase.from('AllotmentPayment').update({ status: (amountToBePaid - allotmentRes.data[0].allotmentPaymentId.paidAmount > parseInt(allotmentRes.data[0].amount)) ? 'partial' : 'complete', paidAmount: parseFloat(allotmentRes.data[0].allotmentPaymentId.paidAmount + parseInt(req.body.payload.payment_link.entity.amount_paid / 100)), }).eq('allotmentPaymentId', allotmentRes.data[0].allotmentPaymentId.allotmentPaymentId).then((_resp) => {
+                                supabase.from('LeadStatus').update({ status: amountToBePaid - allotmentRes.data[0].allotmentPaymentId.paidAmount > parseInt(req.body.payload.payment_link.entity.amount_paid / 100) ? 'Allotment Partial Payment Done' : 'Allotment Payment Complete', }).eq('leadId', allotmentRes.data[0].allotmentPaymentId.leadId).then((rees) => {
+                                    res.send("success")
                                 })
                             })
                         })
@@ -409,7 +398,7 @@ router.post('/create-payment-link', function (req, res, next) {
             amount: req.body.amount * 100,
             currency: "INR",
             accept_partial: false,
-            expire_by: new Date().getTime() + 86400000,
+            expire_by: req.body.type === 'preselect' ? (new Date().getTime() + 90000) / 1000 : (new Date().getTime() + 86400000) / 1000,
             // expire_by: 1673013266723,
             // first_min_partial_amount: 100,
             description: req.body.mode === 'token' ? `${req.body.tokenName} token payment link for ${req.body.eventName} event for ${req.body.leadName} lead` : `Allotment payment link for ${req.body.leadName} lead`,
