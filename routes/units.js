@@ -15,13 +15,15 @@ router.post('/updateStatus', function (req, res, next) {
     } else {
         res.send("Status will be changed back to available if not alloted")
         setTimeout(() => {
-            if (mode === 'preselect') {
+            if (req.body.mode === 'preselect') {
                 supabase.from('Inventory').select('*,inventoryStatusId(*)').eq('unitId', req.body.unitId).then((resp) => {
                     if (resp.data[0].inventoryStatusId.status === 'Preselected') {
                         supabase.from('InventoryStatus').select('*').eq('status', "Available").then((statusRes) => {
-                            supabase.from('LeadStatus').update({ status: "Preselect not confirmed" }).eq('leadId', resp.data[0].leadId).then((leadRes) => {
-                                supabase.from('AllotmentPayment').update({ preselectConfirmation: "Not confirmed" }).eq('unitId', resp.data[0].unitId).eq('leadId', resp.data[0].leadId).then((apREs) => {
-                                    console.log("Changed")
+                            supabase.from('Inventory').update({ leadId: null, inventoryStatusId: statusRes.data[0].inventoryStatusId }).eq('unitId', resp.data[0].unitId).then((leadRes) => {
+                                supabase.from('LeadStatus').update({ status: "Preselect not confirmed" }).eq('leadId', resp.data[0].leadId).then((leadRes) => {
+                                    supabase.from('AllotmentPayment').update({ preselectConfirmation: "Not confirmed" }).eq('unitId', resp.data[0].unitId).eq('leadId', resp.data[0].leadId).then((apREs) => {
+                                        console.log("Changed")
+                                    })
                                 })
                             })
                         })
