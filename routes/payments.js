@@ -417,15 +417,15 @@ router.post('/create-payment-link', function (req, res, next) {
             // callback_method: "get"
         }).then((resp) => {
             res.send(resp)
-            // if (req.body.mode === 'token') {
-            //     supabase.from('TokenTransactions').insert({ paymentLinkId: resp.id, paymentId: req.body.paymentId, status: "pending", amount: resp.amount / 100, leadId: req.body.leadId, eventTokenId: req.body.eventTokenId }).then((supabaseRes) => {
-            //         res.send({ success: true, message: "Payment link shared successfully" })
-            //     })
-            // } else {
-            //     supabase.from('AllotmentTransactions').insert({ paymentLinkId: resp.id, modeOfPayment: "Razorpay Link", transactionType: "Allotment", allotmentPaymentId: req.body.allotmentPaymentId, unitId: req.body.unitId, inventoryMergeId: req.body.inventoryMergeId, status: "pending", amount: resp.amount / 100, leadId: req.body.leadId }).then((supabaseRes) => {
-            //         res.send({ success: true, message: "Payment link shared successfully" })
-            //     })
-            // }
+            if (req.body.mode === 'token') {
+                supabase.from('TokenTransactions').insert({ paymentLinkId: resp.id, paymentId: req.body.paymentId, status: "pending", amount: resp.amount / 100, leadId: req.body.leadId, eventTokenId: req.body.eventTokenId }).then((supabaseRes) => {
+                    res.send({ success: true, message: "Payment link shared successfully" })
+                })
+            } else {
+                supabase.from('AllotmentTransactions').insert({ paymentLinkId: resp.id, modeOfPayment: "Razorpay Link", transactionType: "Allotment", allotmentPaymentId: req.body.allotmentPaymentId, unitId: req.body.unitId, inventoryMergeId: req.body.inventoryMergeId, status: "pending", amount: resp.amount / 100, leadId: req.body.leadId }).then((supabaseRes) => {
+                    res.send({ success: true, message: "Payment link shared successfully" })
+                })
+            }
         }).catch((err) => {
             res.send({ success: false, err })
         })
