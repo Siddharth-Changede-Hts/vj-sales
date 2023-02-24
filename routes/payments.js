@@ -282,16 +282,54 @@ router.post('/webhook', function (req, res, next) {
             })
         }
     } else if (req.body.event === 'payment_link.expired' || req.body.event === 'payment_link.cancelled') {
-        supabase.from('TokenTransactions').select('*,eventTokenId(*)').eq('paymentLinkId', req.body.payload.payment_link.entity.id).then((tokenTransaction) => {
-            supabase.from('LeadStatus').update({ status: "Site Visit Done" }).eq('leadId', tokenTransaction.data[0].leadId).then((leadStatus) => {
-                supabase.from('EventTokenLeadRelations').update({ status: "expired" }).eq('paymentId', tokenTransaction.data[0].paymentId).then((relation) => {
-                    supabase.from('TokenTransactions').update({ status: "expired" }).eq('paymentLinkId', req.body.payload.payment_link.entity.id).then((resp) => {
+        if (req.body.payload.payment_link.entity.description.includes('Allotment payment link')) {
+            supabase.from('AllotmentTransactions').select('*,allotmentPaymentId(*,paymentId(*,eventId(*)),inventoryMergedId(*))').eq('paymentLinkId', req.body.payload.payment_link.entity.id).then((allotmentRes) => {
+                if (allotmentRes.data[0].allotmentPaymentId.pricingType === 'preselect') {
+                    supabase.from('EventTokenLeadRelations').update({ status: 'expired', last_updated_at: new Date().getTime() }).eq('paymentId', allotmentRes.data[0].allotmentPaymentId.paymentId.paymentId).then((rr) => {
+                        supabase.from('AllotmentTransactions').update({ status: "expired", last_updated_at: new Date().getTime() }).eq('paymentLinkId', req.body.payload.payment_link.entity.id).then((allotmentRes) => {
+                            supabase.from('AllotmentPayment').update({ status: "expired", last_updated_at: new Date().getTime() }).eq('allotmentPaymentId', allotmentRes.data[0].allotmentPaymentId.allotmentPaymentId).then((_resp) => {
+                                supabase.from('LeadStatus').update({ status: "Preselect Payment Not Done", last_updated_at: new Date().getTime() }).eq('leadId', allotmentRes.data[0].allotmentPaymentId.leadId).then((res) => {
+                                    supabase.from('InventoryStatus').select('*').eq('status', "Alloted").then((statusRes) => {
+                                        if (allotmentRes.data[0].allotmentPaymentId.inventoryMergedId && allotmentRes.data[0].allotmentPaymentId.inventoryMergedId.inventoryMergeId !== '') {
+                                            supabase.from('Inventory').update({ inventoryStatusId: statusRes.data[0].inventoryStatusId }).eq('unitId', allotmentRes.data[0].allotmentPaymentId.inventoryMergedId.unit1Id).then((updateRes) => {
+                                                supabase.from('InventoryLogs').insert({ unitId: allotmentRes.data[0].allotmentPaymentId.inventoryMergedId.unit1Id, inventoryStatusId: statusRes.data[0].inventoryStatusId, leadId: allotmentRes.data[0].allotmentPaymentId.leadId, eventId: allotmentRes.data[0].allotmentPaymentId.eventId, pricingType: "preselect" }).then((updateRes) => {
+                                                    supabase.from('Inventory').update({ inventoryStatusId: statusRes.data[0].inventoryStatusId }).eq('unitId', allotmentRes.data[0].allotmentPaymentId.inventoryMergedId.unit2Id).then((updateRes) => {
+                                                        supabase.from('InventoryLogs').insert({ unitId: allotmentRes.data[0].allotmentPaymentId.inventoryMergedId.unit2Id, inventoryStatusId: statusRes.data[0].inventoryStatusId, leadId: allotmentRes.data[0].allotmentPaymentId.leadId, eventId: allotmentRes.data[0].allotmentPaymentId.eventId, pricingType: "preselect" }).then((updateRes) => {
+                                                            res.send("success")
+                                                        })
+                                                    })
+                                                })
+                                            })
+                                        } else {
+                                            supabase.from('Inventory').update({ inventoryStatusId: statusRes.data[0].inventoryStatusId }).eq('unitId', allotmentRes.data[0].allotmentPaymentId.unitId).then((updateRes) => {
+                                                supabase.from('InventoryLogs').insert({ unitId: allotmentRes.data[0].allotmentPaymentId.unitId, inventoryStatusId: statusRes.data[0].inventoryStatusId, leadId: allotmentRes.data[0].allotmentPaymentId.leadId, eventId: allotmentRes.data[0].allotmentPaymentId.eventId, pricingType: "preselect" }).then((updateRes) => {
+                                                    res.send("success")
+                                                })
+                                            })
+                                        }
+                                    })
+                                })
+                            })
+                        })
+                    })
+                } else {
+                    supabase.from('AllotmentTransactions').update({ status: "expired" }).eq('paymentLinkId', req.body.payload.payment_link.entity.id).then((allotmentRes) => {
                         res.send("success")
-                        console.log("success")
+                    })
+                }
+            })
+        } else {
+            supabase.from('TokenTransactions').select('*,eventTokenId(*)').eq('paymentLinkId', req.body.payload.payment_link.entity.id).then((tokenTransaction) => {
+                supabase.from('LeadStatus').update({ status: "Token Payment Not Done", last_updated_at: new Date().getTime() }).eq('leadId', tokenTransaction.data[0].leadId).then((leadStatus) => {
+                    supabase.from('EventTokenLeadRelations').update({ status: "expired", last_updated_at: new Date().getTime() }).eq('paymentId', tokenTransaction.data[0].paymentId).then((relation) => {
+                        supabase.from('TokenTransactions').update({ status: "expired", last_updated_at: new Date().getTime() }).eq('paymentLinkId', req.body.payload.payment_link.entity.id).then((resp) => {
+                            res.send("success")
+                            console.log("success")
+                        })
                     })
                 })
             })
-        })
+        }
     } else if (req.body.event === 'virtual_account.credited') {
         supabase.from('Leads').select('*').eq('razorpayCustomerId', req.body.payload.virtual_account.entity.customer_id).then((lead) => {
             supabase.from('AllotmentPayment').select('*,unitId(*,inventoryTypeId(*),projectId(*)),inventoryMergedId(*),leadId(*,personId(*)),paymentId(*,eventId(*))').eq('leadId', lead.data[0].leadId).neq('paidAmount', 500000).order('created_at').then(async (payments) => {
