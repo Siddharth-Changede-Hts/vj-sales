@@ -398,8 +398,8 @@ router.post('/create-payment-link', function (req, res, next) {
             amount: req.body.amount * 100,
             currency: "INR",
             accept_partial: false,
-            // expire_by: req.body.type === 'preselect' ? ((new Date().getTime() + 90000) / 1000).toFixed(0) : ((new Date().getTime() + 86400000) / 1000).toFixed(0),
-            // expire_by: req.body.type === 'preselect' ? (new Date().getTime() + 90000) / 1000 : (new Date().getTime() + 86400000) / 1000,
+            expire_by: req.body.type === 'preselect' ? parseInt(((new Date().getTime() + 900000) / 1000).toFixed(0)) : parseInt(((new Date().getTime() + 86400000) / 1000).toFixed(0)),
+            // expire_by: req.body.type === 'preselect' ? (new Date().getTime() + 900000) / 1000 : (new Date().getTime() + 86400000) / 1000,
             // expire_by: 1673013266723,
             // first_min_partial_amount: 100,
             description: req.body.mode === 'token' ? `${req.body.tokenName} token payment link for ${req.body.eventName} event for ${req.body.leadName} lead` : `Allotment payment link for ${req.body.leadName} lead`,
@@ -416,15 +416,16 @@ router.post('/create-payment-link', function (req, res, next) {
             // callback_url: "https://example-callback-url.com/",
             // callback_method: "get"
         }).then((resp) => {
-            if (req.body.mode === 'token') {
-                supabase.from('TokenTransactions').insert({ paymentLinkId: resp.id, paymentId: req.body.paymentId, status: "pending", amount: resp.amount / 100, leadId: req.body.leadId, eventTokenId: req.body.eventTokenId }).then((supabaseRes) => {
-                    res.send({ success: true, message: "Payment link shared successfully" })
-                })
-            } else {
-                supabase.from('AllotmentTransactions').insert({ paymentLinkId: resp.id, modeOfPayment: "Razorpay Link", transactionType: "Allotment", allotmentPaymentId: req.body.allotmentPaymentId, unitId: req.body.unitId, inventoryMergeId: req.body.inventoryMergeId, status: "pending", amount: resp.amount / 100, leadId: req.body.leadId }).then((supabaseRes) => {
-                    res.send({ success: true, message: "Payment link shared successfully" })
-                })
-            }
+            res.send(resp)
+            // if (req.body.mode === 'token') {
+            //     supabase.from('TokenTransactions').insert({ paymentLinkId: resp.id, paymentId: req.body.paymentId, status: "pending", amount: resp.amount / 100, leadId: req.body.leadId, eventTokenId: req.body.eventTokenId }).then((supabaseRes) => {
+            //         res.send({ success: true, message: "Payment link shared successfully" })
+            //     })
+            // } else {
+            //     supabase.from('AllotmentTransactions').insert({ paymentLinkId: resp.id, modeOfPayment: "Razorpay Link", transactionType: "Allotment", allotmentPaymentId: req.body.allotmentPaymentId, unitId: req.body.unitId, inventoryMergeId: req.body.inventoryMergeId, status: "pending", amount: resp.amount / 100, leadId: req.body.leadId }).then((supabaseRes) => {
+            //         res.send({ success: true, message: "Payment link shared successfully" })
+            //     })
+            // }
         }).catch((err) => {
             res.send({ success: false, err })
         })
