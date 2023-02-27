@@ -10,7 +10,7 @@ router.post('/updateStatus', function (req, res, next) {
     if (!req.body.time || req.body.time === '') {
         res.send({ success: false, message: "Please provide time in mins" })
     }
-    if (!req.body.paymentId || req.body.paymentId === '') {
+    if ((req.body.mode === 'preselect' || req.body.mode === 'preselect2') && (!req.body.paymentId || req.body.paymentId === '')) {
         res.send({ success: false, message: "Please provide paymentId" })
     }
     if (!req.body.mode || req.body.mode === '') {
