@@ -436,7 +436,7 @@ router.post('/create-payment-link', function (req, res, next) {
             amount: req.body.amount * 100,
             currency: "INR",
             accept_partial: false,
-            expire_by: req.body.type === 'preselect' ? parseInt(((new Date().getTime() + 900000) / 1000).toFixed(0)) : parseInt(((new Date().getTime() + 86400000) / 1000).toFixed(0)),
+            expire_by: req.body.type === 'preselect' ? parseInt(((new Date().getTime() + 1000000) / 1000).toFixed(0)) : parseInt(((new Date().getTime() + 86400000) / 1000).toFixed(0)),
             // expire_by: req.body.type === 'preselect' ? (new Date().getTime() + 900000) / 1000 : (new Date().getTime() + 86400000) / 1000,
             // expire_by: 1673013266723,
             // first_min_partial_amount: 100,
