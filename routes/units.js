@@ -23,9 +23,9 @@ router.post('/updateStatus', function (req, res, next) {
                     if (resp.data[0].inventoryStatusId.status === 'Preselected' || resp.data[0].inventoryStatusId.status === 'Alloted') {
                         supabase.from('InventoryStatus').select('*').eq('status', "Available").then((statusRes) => {
                             supabase.from('Inventory').update({ leadId: null, inventoryStatusId: statusRes.data[0].inventoryStatusId }).eq('unitId', resp.data[0].unitId).then((leadRes) => {
-                                supabase.from('EventTokenLeadRelations').update({ status: 'expired', last_updated_at: new Date().getTime() }).eq('paymentId', req.body.paymentId).then((rr) => {
-                                    supabase.from('LeadStatus').update({ status: "Preselect not confirmed" }).eq('leadId', resp.data[0].leadId).then((leadRes) => {
-                                        supabase.from('AllotmentPayment').update({ preselectConfirmation: "not confirmed" }).eq('unitId', resp.data[0].unitId).eq('leadId', resp.data[0].leadId).then((apREs) => {
+                                supabase.from('LeadStatus').update({ status: req.body.mode === 'preselect' ? "Preselect payment not done" : "Preselect not confirmed" }).eq('leadId', resp.data[0].leadId).then((leadRes) => {
+                                    supabase.from('AllotmentPayment').update({ preselectConfirmation: "not confirmed" }).eq('unitId', resp.data[0].unitId).eq('leadId', resp.data[0].leadId).then((apREs) => {
+                                        supabase.from('EventTokenLeadRelations').update({ status: 'expired', last_updated_at: new Date().getTime() }).eq('paymentId', req.body.paymentId).then((rr) => {
                                             console.log("Changed")
                                         })
                                     })
