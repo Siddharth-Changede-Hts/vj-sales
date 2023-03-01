@@ -292,9 +292,9 @@ router.post('/webhook', function (req, res, next) {
                                     supabase.from('InventoryStatus').select('*').eq('status', "Alloted").then((statusRes) => {
                                         if (allotmentRes.data[0].allotmentPaymentId.inventoryMergedId && allotmentRes.data[0].allotmentPaymentId.inventoryMergedId.inventoryMergeId !== '') {
                                             supabase.from('Inventory').update({ inventoryStatusId: statusRes.data[0].inventoryStatusId }).eq('unitId', allotmentRes.data[0].allotmentPaymentId.inventoryMergedId.unit1Id).then((updateRes) => {
-                                                supabase.from('InventoryLogs').insert({ unitId: allotmentRes.data[0].allotmentPaymentId.inventoryMergedId.unit1Id, inventoryStatusId: statusRes.data[0].inventoryStatusId, leadId: allotmentRes.data[0].allotmentPaymentId.leadId, eventId: allotmentRes.data[0].allotmentPaymentId.eventId, pricingType: "preselect" }).then((updateRes) => {
+                                                supabase.from('InventoryLogs').insert({ unitId: allotmentRes.data[0].allotmentPaymentId.inventoryMergedId.unit1Id, leadId: allotmentRes.data[0].allotmentPaymentId.leadId, eventId: allotmentRes.data[0].allotmentPaymentId.eventId, pricingType: "preselect" }).then((updateRes) => {
                                                     supabase.from('Inventory').update({ inventoryStatusId: statusRes.data[0].inventoryStatusId }).eq('unitId', allotmentRes.data[0].allotmentPaymentId.inventoryMergedId.unit2Id).then((updateRes) => {
-                                                        supabase.from('InventoryLogs').insert({ unitId: allotmentRes.data[0].allotmentPaymentId.inventoryMergedId.unit2Id, inventoryStatusId: statusRes.data[0].inventoryStatusId, leadId: allotmentRes.data[0].allotmentPaymentId.leadId, eventId: allotmentRes.data[0].allotmentPaymentId.eventId, pricingType: "preselect" }).then((updateRes) => {
+                                                        supabase.from('InventoryLogs').insert({ unitId: allotmentRes.data[0].allotmentPaymentId.inventoryMergedId.unit2Id, leadId: allotmentRes.data[0].allotmentPaymentId.leadId, eventId: allotmentRes.data[0].allotmentPaymentId.eventId, pricingType: "preselect" }).then((updateRes) => {
                                                             res.send("success")
                                                         })
                                                     })
@@ -302,7 +302,7 @@ router.post('/webhook', function (req, res, next) {
                                             })
                                         } else {
                                             supabase.from('Inventory').update({ inventoryStatusId: statusRes.data[0].inventoryStatusId }).eq('unitId', allotmentRes.data[0].allotmentPaymentId.unitId).then((updateRes) => {
-                                                supabase.from('InventoryLogs').insert({ unitId: allotmentRes.data[0].allotmentPaymentId.unitId, inventoryStatusId: statusRes.data[0].inventoryStatusId, leadId: allotmentRes.data[0].allotmentPaymentId.leadId, eventId: allotmentRes.data[0].allotmentPaymentId.eventId, pricingType: "preselect" }).then((updateRes) => {
+                                                supabase.from('InventoryLogs').insert({ unitId: allotmentRes.data[0].allotmentPaymentId.unitId, leadId: allotmentRes.data[0].allotmentPaymentId.leadId, eventId: allotmentRes.data[0].allotmentPaymentId.eventId, pricingType: "preselect" }).then((updateRes) => {
                                                     res.send("success")
                                                 })
                                             })

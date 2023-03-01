@@ -10,6 +10,9 @@ router.post('/updateStatus', function (req, res, next) {
     if (!req.body.time || req.body.time === '') {
         res.send({ success: false, message: "Please provide time in mins" })
     }
+    if (!req.body.eventId || req.body.eventId === '') {
+        res.send({ success: false, message: "Please provide eventId" })
+    }
     if ((req.body.mode === 'preselect' || req.body.mode === 'preselect2') && (!req.body.paymentId || req.body.paymentId === '')) {
         res.send({ success: false, message: "Please provide paymentId" })
     }
@@ -26,7 +29,9 @@ router.post('/updateStatus', function (req, res, next) {
                                 supabase.from('LeadStatus').update({ status: req.body.mode === 'preselect' ? "Preselect payment not done" : "Preselect not confirmed" }).eq('leadId', resp.data[0].leadId).then((leadRes) => {
                                     supabase.from('AllotmentPayment').update({ status: req.body.mode === 'preselect' ? "expired" : "complete", preselectConfirmation: req.body.mode === 'preselect' ? "payment not done" : "not confirmed" }).eq('unitId', resp.data[0].unitId).eq('leadId', resp.data[0].leadId).then((apREs) => {
                                         supabase.from('EventTokenLeadRelations').update({ status: 'expired', last_updated_at: new Date().getTime() }).eq('paymentId', req.body.paymentId).then((rr) => {
-                                            console.log("Changed")
+                                            supabase.from('InventoryLogs').insert({ unitId: req.body.unitId, status: "available", eventId: req.body.eventId }).then((r) => {
+                                                console.log("Changed")
+                                            })
                                         })
                                     })
                                 })
@@ -39,7 +44,9 @@ router.post('/updateStatus', function (req, res, next) {
                     if (resp.data[0].inventoryStatusId.status === 'On Hold') {
                         supabase.from('InventoryStatus').select('*').eq('status', "Available").then((statusRes) => {
                             supabase.from('Inventory').update({ inventoryStatusId: statusRes.data[0].inventoryStatusId, unitHoldTime: null }).eq('unitId', req.body.unitId).then((r) => {
-                                console.log("Changed")
+                                supabase.from('InventoryLogs').insert({ unitId: req.body.unitId, status: "available", eventId: req.body.eventId }).then((r) => {
+                                    console.log("Changed")
+                                })
                             })
                         })
                     }
