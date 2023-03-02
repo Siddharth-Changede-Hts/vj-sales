@@ -25,9 +25,9 @@ router.post('/updateStatus', function (req, res, next) {
                 supabase.from('Inventory').select('*,inventoryStatusId(*)').eq('unitId', req.body.unitId).then((resp) => {
                     if (resp.data[0].inventoryStatusId.status === 'Preselected' || resp.data[0].inventoryStatusId.status === 'Alloted') {
                         supabase.from('InventoryStatus').select('*').eq('status', "Available").then((statusRes) => {
-                            supabase.from('Inventory').update({ leadId: null, inventoryStatusId: statusRes.data[0].inventoryStatusId }).eq('unitId', resp.data[0].unitId).then((leadRes) => {
-                                supabase.from('LeadStatus').update({ status: req.body.mode === 'preselect' ? "Preselect payment not done" : "Preselect not confirmed" }).eq('leadId', resp.data[0].leadId).then((leadRes) => {
-                                    supabase.from('AllotmentPayment').update({ status: req.body.mode === 'preselect' ? "expired" : "complete", preselectConfirmation: req.body.mode === 'preselect' ? "payment not done" : "not confirmed" }).eq('unitId', resp.data[0].unitId).eq('leadId', resp.data[0].leadId).then((apREs) => {
+                            supabase.from('Inventory').update({ leadId: null, inventoryStatusId: statusRes.data[0].inventoryStatusId, last_updated_at: new Date().getTime() }).eq('unitId', resp.data[0].unitId).then((leadRes) => {
+                                supabase.from('LeadStatus').update({ last_updated_at: new Date().getTime(), status: req.body.mode === 'preselect' ? "Preselect payment not done" : "Preselect not confirmed" }).eq('leadId', resp.data[0].leadId).then((leadRes) => {
+                                    supabase.from('AllotmentPayment').update({ last_updated_at: new Date().getTime(), status: req.body.mode === 'preselect' ? "expired" : "complete", preselectConfirmation: req.body.mode === 'preselect' ? "payment not done" : "not confirmed" }).eq('unitId', resp.data[0].unitId).eq('leadId', resp.data[0].leadId).then((apREs) => {
                                         supabase.from('EventTokenLeadRelations').update({ status: 'expired', last_updated_at: new Date().getTime() }).eq('paymentId', req.body.paymentId).then((rr) => {
                                             supabase.from('InventoryLogs').insert({ unitId: req.body.unitId, status: "available", eventId: req.body.eventId }).then((r) => {
                                                 console.log("Changed")
@@ -43,7 +43,7 @@ router.post('/updateStatus', function (req, res, next) {
                 supabase.from('Inventory').select('*,inventoryStatusId(*)').eq('unitId', req.body.unitId).then((resp) => {
                     if (resp.data[0].inventoryStatusId.status === 'On Hold') {
                         supabase.from('InventoryStatus').select('*').eq('status', "Available").then((statusRes) => {
-                            supabase.from('Inventory').update({ inventoryStatusId: statusRes.data[0].inventoryStatusId, unitHoldTime: null }).eq('unitId', req.body.unitId).then((r) => {
+                            supabase.from('Inventory').update({ last_updated_at: new Date().getTime(), inventoryStatusId: statusRes.data[0].inventoryStatusId, unitHoldTime: null }).eq('unitId', req.body.unitId).then((r) => {
                                 supabase.from('InventoryLogs').insert({ unitId: req.body.unitId, status: "available", eventId: req.body.eventId }).then((r) => {
                                     console.log("Changed")
                                 })
@@ -77,7 +77,7 @@ router.post('/updateInventoryPrice', async function (req, res, next) {
         let count = 0
         for (let i = 0; i < units.length; i++) {
             // await supabase.from('b').insert({ name: "sid" }).then((resp) => {
-            let resp = await supabase.from('Inventory').update({ totalCost: units[i].totalCost, SDR: units[i].SDR, OCR: units[i].OCR, GST: units[i].GST, BSP: units[i].BSP }).eq('unitId', units[i].unitId)
+            let resp = await supabase.from('Inventory').update({ last_updated_at: new Date().getTime(), totalCost: units[i].totalCost, SDR: units[i].SDR, OCR: units[i].OCR, GST: units[i].GST, BSP: units[i].BSP }).eq('unitId', units[i].unitId)
             unitCount[req.query.token].updatedCount = ++count
             unitCount[req.query.token].processFinished = false
             if (units.length === count) {
