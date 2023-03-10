@@ -13,6 +13,8 @@ var notificationRouter = require('./routes/notification');
 var paymentsRouter = require('./routes/payments');
 var unitsRouter = require('./routes/units');
 var pdfToJsonRouter = require('./routes/pdfToJson');
+var bookingRouter = require('./routes/bookings');
+var schedulerRouter = require('./routes/scheduler');
 
 var app = express().use('*', cors());;
 
@@ -34,6 +36,8 @@ app.use('/notification', notificationRouter);
 app.use('/payments', paymentsRouter);
 app.use('/units', unitsRouter);
 app.use('/pdfToJson', pdfToJsonRouter);
+app.use('/bookings', bookingRouter);
+app.use('/scheduler', schedulerRouter);
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {
