@@ -1,4 +1,6 @@
+const axios = require("axios").default;
 var express = require("express");
+const { matchUnits } = require("./scheduler");
 var router = express.Router();
 var supabase = require("../services/supabaseClient").supabase;
 let unitCount = {}
@@ -115,6 +117,14 @@ router.get('/getCount', function (req, res, next) {
             }
         }, 1000);
     }
+})
+
+router.post('/updateFarvisionStatus', function (req, res, next) {
+    matchUnits(req.body.project).then((resp) => {
+        res.send({ success: true, message: "Project Synced Successfully" })
+    }).catch((err) => {
+        res.send({ success: false, err })
+    })
 })
 
 module.exports = router;

@@ -188,14 +188,14 @@ function createVirtualAcc(name, contactNumber, email, leadId) {
 router.post('/webhook', function (req, res, next) {
     if (req.body.event === 'payment_link.paid') {
         if (req.body.payload.payment_link.entity.description.includes('Allotment payment link')) {
-            supabase.from('AllotmentTransactions').select('*,allotmentPaymentId(*,paymentId(*,eventId(*)),inventoryMergedId(*))').eq('paymentLinkId', req.body.payload.payment_link.entity.id).then((allotmentRes) => {
+            supabase.from('AllotmentTransactions').select('*,allotmentPaymentId(*,paymentId(*,eventId(*)),inventoryMergedId(*,unit1Id(*,projectId(*)),unit2Id(*)),leadId(*))').eq('paymentLinkId', req.body.payload.payment_link.entity.id).then((allotmentRes) => {
                 let amountToBePaid = 500000
                 if (allotmentRes.data[0].allotmentPaymentId.paymentId && allotmentRes.data[0].allotmentPaymentId.paymentId.eventId.adjustTokenAmt && allotmentRes.data[0].allotmentPaymentId.pricingType !== 'preselect') {
                     amountToBePaid = 500000 - allotmentRes.data[0].allotmentPaymentId.paymentId.paidAmount
                 }
                 if (allotmentRes.data[0].status === 'pending') {
                     if (allotmentRes.data[0].allotmentPaymentId.pricingType === 'preselect') {
-                        supabase.from('AllotmentTransactions').update({ status: "complete", last_updated_at: new Date().getTime() }).eq('paymentLinkId', req.body.payload.payment_link.entity.id).then((resp) => {
+                        supabase.from('AllotmentTransactions').update({ refundId: req.body.payload.payment.id, status: "complete", last_updated_at: new Date().getTime() }).eq('paymentLinkId', req.body.payload.payment_link.entity.id).then((resp) => {
                             supabase.from('AllotmentPayment').update({ status: 'Payment Complete', last_updated_at: new Date().getTime(), preselectConfirmation: "confirmation pending", paidAmount: parseFloat(allotmentRes.data[0].allotmentPaymentId.paidAmount + parseInt(req.body.payload.payment_link.entity.amount_paid / 100)), }).eq('allotmentPaymentId', allotmentRes.data[0].allotmentPaymentId.allotmentPaymentId).then((_resp) => {
                                 supabase.from('LeadStatus').update({ status: "Preselect Confirmation Pending", last_updated_at: new Date().getTime() }).eq('leadId', allotmentRes.data[0].allotmentPaymentId.leadId).then((res) => {
                                     supabase.from('EventTokenLeadRelations').update({ paidAmount: 500000, status: 'alloted', last_updated_at: new Date().getTime() }).eq('paymentId', allotmentRes.data[0].allotmentPaymentId.paymentId.paymentId).then((rr) => {
@@ -205,10 +205,36 @@ router.post('/webhook', function (req, res, next) {
                             })
                         })
                     } else {
-                        supabase.from('AllotmentTransactions').update({ status: "complete", last_updated_at: new Date().getTime() }).eq('paymentLinkId', req.body.payload.payment_link.entity.id).then((resp) => {
+                        supabase.from('AllotmentTransactions').update({ refundId: req.body.payload.payment.id, status: "complete", last_updated_at: new Date().getTime() }).eq('paymentLinkId', req.body.payload.payment_link.entity.id).then((resp) => {
                             supabase.from('AllotmentPayment').update({ last_updated_at: new Date().getTime(), status: (amountToBePaid - allotmentRes.data[0].allotmentPaymentId.paidAmount > parseInt(allotmentRes.data[0].amount)) ? 'Partial Payment Done' : 'Payment Complete', paidAmount: parseFloat(allotmentRes.data[0].allotmentPaymentId.paidAmount + parseInt(req.body.payload.payment_link.entity.amount_paid / 100)), }).eq('allotmentPaymentId', allotmentRes.data[0].allotmentPaymentId.allotmentPaymentId).then((_resp) => {
                                 supabase.from('LeadStatus').update({ last_updated_at: new Date().getTime(), status: amountToBePaid - allotmentRes.data[0].allotmentPaymentId.paidAmount > parseInt(req.body.payload.payment_link.entity.amount_paid / 100) ? 'Allotment Partial Payment Done' : 'Allotment Payment Complete', }).eq('leadId', allotmentRes.data[0].allotmentPaymentId.leadId).then((rees) => {
-                                    res.send("success")
+                                    if (amountToBePaid <= (allotmentRes.data[0].allotmentPaymentId.paidAmount + parseInt(req.body.payload.payment_link.entity.amount_paid / 100))) {
+                                        if (!allotmentRes.data[0].allotmentPaymentId.kycFormFilled) {
+                                            supabase.from('InventoryStatus').select('*').eq('status', "Kyc Pending").then((statusRes) => {
+                                                if (allotmentRes.data[0].allotmentPaymentId?.inventoryMergedId && allotmentRes.data[0].allotmentPaymentId?.inventoryMergedId.inventoryMergeId !== '') {
+                                                    supabase.from('Inventory').update({ inventoryStatusId: statusRes.data[0].inventoryStatusId }).eq('unitId', allotmentRes.data[0].allotmentPaymentId.inventoryMergedId.unit1Id.unitId).then((updateRes) => {
+                                                        supabase.from('InventoryLogs').insert({ unitId: allotmentRes.data[0].allotmentPaymentId.inventoryMergedId.unit1Id.unitId, leadId: allotmentRes.data[0].allotmentPaymentId.leadId.leadId, userId: JSON.parse(localStorage.getItem('user')).userId, status: "kyc pending", pricingType: allotmentRes.data[0].allotmentPaymentId.pricingType, eventId: allotmentRes.data[0].allotmentPaymentId?.paymentId?.eventId.eventId, projectId: allotmentRes.data[0].allotmentPaymentId.inventoryMergedId.unit1Id.projectId.projectId }).then((updateRes) => {
+                                                            supabase.from('Inventory').update({ inventoryStatusId: statusRes.data[0].inventoryStatusId }).eq('unitId', allotmentRes.data[0].allotmentPaymentId.inventoryMergedId.unit2Id.unitId).then((updateRes) => {
+                                                                supabase.from('InventoryLogs').insert({ unitId: allotmentRes.data[0].allotmentPaymentId.inventoryMergedId.unit1Id.unitId, leadId: allotmentRes.data[0].allotmentPaymentId.leadId.leadId, userId: JSON.parse(localStorage.getItem('user')).userId, status: "kyc pending", pricingType: allotmentRes.data[0].allotmentPaymentId.pricingType, eventId: allotmentRes.data[0].allotmentPaymentId?.paymentId?.eventId.eventId, projectId: allotmentRes.data[0].allotmentPaymentId.inventoryMergedId.unit1Id.projectId.projectId }).then((updateRes) => {
+                                                                    res.send("success")
+                                                                })
+                                                            })
+                                                        })
+                                                    })
+                                                } else {
+                                                    supabase.from('Inventory').update({ inventoryStatusId: statusRes.data[0].inventoryStatusId }).eq('unitId', allotmentRes.data[0].allotmentPaymentId.unitId.unitId).then((updateRes) => {
+                                                        supabase.from('InventoryLogs').insert({ unitId: allotmentRes.data[0].allotmentPaymentId.unitId.unitId, leadId: allotmentRes.data[0].allotmentPaymentId.leadId.leadId, userId: JSON.parse(localStorage.getItem('user')).userId, status: "kyc pending", pricingType: allotmentRes.data[0].allotmentPaymentId.pricingType, eventId: allotmentRes.data[0].allotmentPaymentId?.paymentId?.eventId.eventId, projectId: allotmentRes.data[0].allotmentPaymentId.unitId.projectId.projectId }).then((updateRes) => {
+                                                            res.send("success")
+                                                        })
+                                                    })
+                                                }
+                                            })
+                                        } else {
+
+                                        }
+                                    } else {
+                                        res.send("success")
+                                    }
                                 })
                             })
                         })
@@ -222,7 +248,7 @@ router.post('/webhook', function (req, res, next) {
                         createVirtualAcc(tokenTransaction.data[0].leadId.personId.name, tokenTransaction.data[0].leadId.personId.contactNumber, tokenTransaction.data[0].leadId.personId.email, tokenTransaction.data[0].leadId.leadId)
                     }
                     supabase.from('LeadStatus').update({ status: "Token Payment Complete" }).eq('leadId', tokenTransaction.data[0].leadId.leadId).then((leadStatus) => {
-                        supabase.from('TokenTransactions').update({ status: "complete", eventDateTime: new Date().getTime() }).eq('paymentLinkId', req.body.payload.payment_link.entity.id).then((resp) => {
+                        supabase.from('TokenTransactions').update({ refundId: req.body.payload.payment.id, status: "complete", eventDateTime: new Date().getTime() }).eq('paymentLinkId', req.body.payload.payment_link.entity.id).then((resp) => {
                             if (tokenTransaction.data[0].eventTokenId.algoId === '29b30596-9771-4437-807a-097e201395d3') {
                                 supabase.rpc('getmaxsrno', { pid: tokenTransaction.data[0].eventTokenId.eventTokenId }).then((rpcRes) => {
                                     supabase.from('EventTokenLeadRelations').update({ status: "active", qrUrl: `qrcodes/${tokenTransaction.data[0].paymentId}.png`, srno: rpcRes.data[0].num === null ? 1 : parseInt(rpcRes.data[0].num) + 1, bandNumber: rpcRes.data[0].num === null ? 1 : parseInt(rpcRes.data[0].num) + 1, paidAmount: req.body.payload.payment_link.entity.amount_paid / 100 }).eq('paymentId', tokenTransaction.data[0].paymentId).eq('leadId', tokenTransaction.data[0].leadId.leadId).then((leadStatus) => {
